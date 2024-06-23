@@ -5,6 +5,7 @@ from datetime import date
 import requests
 from pathlib import Path
 import pdfplumber
+import json
 
 endpoint = "https://www.fia.com/sites/default/files/"
 
@@ -80,10 +81,11 @@ def convert_quali_classification(key: str):
     return
 
 if __name__ == "__main__":
-    conn = create_server_connection("localhost", "root", "password", 3306, "f1db")
+    conn = create_server_connection("localhost", "user", "password", 3306, "f1db")
     query = (
-        "SELECT * FROM races"
-        "WHERE date < %s"
+        "SELECT c.country, r.round FROM circuits AS c "
+        "JOIN races AS r ON c.circuitId = r.circuitId "
+        "WHERE date < %s "
         "ORDER BY date DESC"
     )
     today = date.today()
@@ -91,11 +93,30 @@ if __name__ == "__main__":
     cursor = conn.cursor()
     cursor.execute(query, (format,))
     row = cursor.fetchone()
-    print(row)
+    print("Found the last race: " + row[0] + " round " + str(row[1]))
     conn.close()
 
+    # Load contries.json file
+    file = open("countries.json", "r")
+    countries = json.load(file)
+
+    # Find the country in the countries.json list
+    code = None
+    for c in countries:
+        if c["name"] == row[0]:
+            # Lowercase the country code
+            code = c["code"].lower()
+            break
+
+    # If the country is not found, exit
+    if code is None:
+        print("Country not found")
+        exit(3)
+
+    print("Country found: " + code)
+
     try :
-        key = download_files(2024, 10, "esp")
+        key = download_files(today.year, row[1], code)
         convert_quali_classification(key)
     except Exception as e:
         print(e)
