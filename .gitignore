@@ -1,0 +1,9 @@
+# Ignore pdf files
+*.pdf
+data
+
+# Ignore jupyter notebook
+*.ipynb
+
+# Ignore python venv
+venv
