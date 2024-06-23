@@ -1,13 +1,35 @@
+import mysql.connector
+from mysql.connector import Error, MySQLConnection
+from datetime import date
+
 import requests
 from pathlib import Path
+import pdfplumber
 
 endpoint = "https://www.fia.com/sites/default/files/"
 
-files = [
-    "f1_q0_timing_qualifyingsessionprovisionalclassification_v01.pdf",
-]
+files = {
+    "quali_classification": "f1_q0_timing_qualifyingsessionprovisionalclassification_v01.pdf",
+}
 
-def download_files(year: int, round: int, country: str):
+def create_server_connection(host_name: str, user_name: str, user_password: str, port: int, db_name: str) -> MySQLConnection:
+    connection = None
+    try:
+        connection = mysql.connector.connect(
+            host=host_name,
+            user=user_name,
+            passwd=user_password,
+            port=port,
+            database=db_name
+        )
+        print("MySQL Database connection successful")
+    except Error as err:
+        print(f"Error: '{err}'")
+        exit(2)
+
+    return connection
+
+def download_files(year: int, round: int, country: str) -> str:
     # Format the key to the following format:
     # year_round_country
     # Note: the round is a 2 digit number
@@ -15,21 +37,66 @@ def download_files(year: int, round: int, country: str):
 
     # Download the files
     for file in files:
-        complete_url = endpoint + key + "_" + file
-        print(complete_url)
+        complete_url = endpoint + key + "_" + files[file]
 
         # Get the file
         resp = requests.get(complete_url)
 
         # Save the file
         if resp.status_code == 200:
-            filepath = Path(f"data/{key}_{file}")
+            print(complete_url + " downloaded")
+            filepath = Path(f"data/{key}_{file}.pdf")
             filepath.parent.mkdir(parents=True, exist_ok=True)
             filepath.write_bytes(resp.content)
         else:
             print(f"Error: {resp.status_code}")
+            exit(1)
 
+    # Job done
+    print("Files downloaded")
+    return key
+
+def convert_quali_classification(key: str):
+    fn = f"data/{key}_quali_classification.pdf"
+
+    pdf = pdfplumber.open(fn)
+    page = pdf.pages[0]
+
+    tables = page.extract_tables()
+
+    # Convert the first table to a CSV file
+    with open(f"data/{key}_quali_classification.csv", "w") as f:
+        # Remove 4th and 5th element of each row
+        tables[0] = [row[:3] + row[5:] for row in tables[0]]
+
+        # Write the header
+        f.write(",".join(["pos", "no", "driver", "entrant", "q1", "laps", "%", "time", "q2", "laps", "time", "q3", "laps", "time"]) + "\n")
+
+
+        for row in tables[0]:
+            f.write(",".join(row) + "\n")
+
+    print("CSV file created for quali classification")
     return
 
 if __name__ == "__main__":
-    download_files(2024, 10, "esp")
+    conn = create_server_connection("localhost", "root", "password", 3306, "f1db")
+    query = (
+        "SELECT * FROM races"
+        "WHERE date < %s"
+        "ORDER BY date DESC"
+    )
+    today = date.today()
+    format = today.strftime("%Y-%m-%d")
+    cursor = conn.cursor()
+    cursor.execute(query, (format,))
+    row = cursor.fetchone()
+    print(row)
+    conn.close()
+
+    try :
+        key = download_files(2024, 10, "esp")
+        convert_quali_classification(key)
+    except Exception as e:
+        print(e)
+        exit(1)
