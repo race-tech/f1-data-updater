@@ -13,6 +13,8 @@ files = {
     "race_analysis": "f1_r0_timing_racelapanalysis_v01",
     "race_lap_chart": "f1_r0_timing_racelapchart_v01",
     "race_classification": "f1_r0_timing_raceprovisionalclassification_v01",
+    "drivers_championship": "f1_r0_timing_driverschampionship_v01",
+    "constructors_championship": "f1_r0_timing_constructorschampionship_v01",
 }
 
 def download_files(year: int, round: int, country: str) -> str:
@@ -226,6 +228,51 @@ def create_race_result(key: str, year: int, round: int):
     print("----- CSV file created for race result -----")
     return
 
+def create_drivers_championship(key: str, year: int, round: int):
+    fn = f"data/{key}_drivers_championship.pdf"
+
+    pdf = pdfplumber.open(fn)
+
+    text = ",".join(["driver", "points", "position", "wins"]) + "\n"
+
+    for page in range(len(pdf.pages)):
+        table = pdf.pages[page].extract_tables()[0]
+
+        for row in table:
+            wins = len([r for r in row[3:] if len(r.split("\n")) == 2 and (r.split("\n")[1] == "1" or r.split("\n")[1] == "1F")])
+            text += ",".join([row[1], row[2], row[0], str(wins)]) + "\n"
+
+
+    file = Path(f"csv/{year}_{round}_drivers_championship.csv")
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    file.write_text(text)
+    print("----- CSV file created for drivers championship -----")
+    return
+
+def create_constructors_championship(key: str, year: int, round: int):
+    fn = f"data/{key}_constructors_championship.pdf"
+
+    pdf = pdfplumber.open(fn)
+
+    text = ",".join(["constructor", "points", "position", "wins"]) + "\n"
+
+    for page in range(len(pdf.pages)):
+        table = pdf.pages[page].extract_tables()[0]
+
+        for row in table:
+            wins = len([r for r in row[3:] if len(r.split("\n")) >= 2 and (r.split("\n")[len(r.split("\n")) - 2] == "1" or r.split("\n")[len(r.split("\n")) - 2] == "F 1")])
+            constructor = " ".join(row[1].split("\n"))
+            text += ",".join([constructor, row[2], row[0], str(wins)]) + "\n"
+
+
+    file = Path(f"csv/{year}_{round}_constructors_championship.csv")
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    file.write_text(text)
+    print("----- CSV file created for constructors championship -----")
+    return
+
 if __name__ == "__main__":
     # Get round number and circuit contry from stdin arguments
     round = int(sys.argv[1])
@@ -256,6 +303,8 @@ if __name__ == "__main__":
         convert_quali_classification(key, today.year, round)
         convert_race_lap_analysis(key, today.year, round)
         create_race_result(key, today.year, round)
+        create_drivers_championship(key, today.year, round)
+        create_constructors_championship(key, today.year, round)
     except Exception as e:
         print(e)
         exit(1)
