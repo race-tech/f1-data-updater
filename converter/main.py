@@ -161,6 +161,7 @@ def create_race_result(key: str, year: int, round: int):
 
     text = ",".join(["no", "grid", "position", "positionOrder", "points", "laps", "time", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
     fastest_lap = [r[11] for r in table]
+    constructor_result = {}
 
     # Handle DNF
     for t in tables:
@@ -172,7 +173,7 @@ def create_race_result(key: str, year: int, round: int):
     for i in range(len(table)):
         row = table[i]
         if row[-1] != '':
-            points = row[-1]
+            points = int(row[-1])
         else:
             points = 0
 
@@ -180,6 +181,11 @@ def create_race_result(key: str, year: int, round: int):
             lap_time = row[7]
         else:
             lap_time = row[8]
+
+        if row[5] not in constructor_result:
+            constructor_result[row[5]] = points
+        else:
+            constructor_result[row[5]] += points
 
         text += ",".join([row[1], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
 
@@ -193,17 +199,30 @@ def create_race_result(key: str, year: int, round: int):
                 row = table[i]
 
                 if row[-1] != '':
-                    points = row[-1]
+                    points = int(row[-1])
                 else:
                     points = 0
 
-                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), '', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap.index(row[10]) + 1), row[10], row[9]]) + "\n"
+                if row[4] not in constructor_result:
+                    constructor_result[row[4]] = points
+                else:
+                    constructor_result[row[4]] += points
+
+                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap.index(row[10]) + 1), row[10], row[9]]) + "\n"
+
+    constructor_text = ",".join(["constructor", "points"]) + "\n"
+    for constructor in constructor_result:
+        constructor_text += f"{constructor},{constructor_result[constructor]}\n"
 
 
-    file = Path(f"csv/{year}_{round}_race_result.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
+    driver_file = Path(f"csv/{year}_{round}_driver_race_result.csv")
+    driver_file.parent.mkdir(parents=True, exist_ok=True)
 
-    file.write_text(text)
+    constructor_file = Path(f"csv/{year}_{round}_constructor_race_result.csv")
+    constructor_file.parent.mkdir(parents=True, exist_ok=True)
+
+    driver_file.write_text(text)
+    constructor_file.write_text(constructor_text)
     print("----- CSV file created for race result -----")
     return
 
