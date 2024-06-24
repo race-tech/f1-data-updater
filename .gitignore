@@ -11,3 +11,4 @@ csv
 
 # Ignore python venv
 venv
+.DS_Store

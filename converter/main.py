@@ -46,7 +46,7 @@ def download_files(year: int, round: int, country: str) -> str:
             exit(1)
 
     # Job done
-    print("Files downloaded")
+    print("----- Files downloaded -----")
     return key
 
 def convert_quali_classification(key: str, year: int, round: int):
@@ -69,7 +69,7 @@ def convert_quali_classification(key: str, year: int, round: int):
 
     file.write_text(text)
 
-    print("CSV file created for quali classification")
+    print("----- CSV file created for quali classification -----")
     return
 
 def convert_race_lap_analysis(key: str, year: int, round: int):
@@ -112,7 +112,8 @@ def convert_race_lap_analysis(key: str, year: int, round: int):
         table = table[4:]
 
         for row in table:
-            if row[0] == '':
+            not_empty = [r for r in row if r != '']
+            if len(not_empty) == 0:
                 # Handle the case where the row is empty
                 continue
 
@@ -122,9 +123,9 @@ def convert_race_lap_analysis(key: str, year: int, round: int):
                 if not drivers[driver][0] in lap_analysis:
                     lap_analysis[drivers[driver][0]] = {}
 
-                if r[0] != '':
+                if r[0] != '' and r[0] != None:
                     lap_analysis[drivers[driver][0]][r[0]] = r[2]
-                if r[4] != '':
+                if r[4] != '' and r[4] != None:
                     lap_analysis[drivers[driver][0]][r[4]] = r[6]
 
         for driver in lap_analysis:
@@ -144,7 +145,66 @@ def convert_race_lap_analysis(key: str, year: int, round: int):
             text += f"{i + 1},{driver},{lap[0]},{lap[1]}\n"
 
     file.write_text(text)
-    print("CSV file created for laps analysis")
+    print("----- CSV file created for laps analysis -----")
+    return
+
+def create_race_result(key: str, year: int, round: int):
+    fn_race_results = f"data/{key}_race_classification.pdf"
+    fn_lap_chart = f"data/{key}_race_lap_chart.pdf"
+
+    pdf_lap_chart = pdfplumber.open(fn_lap_chart)
+    grid_start = [t for t in pdf_lap_chart.pages[0].extract_text().split("\n") if t.startswith("GRID")][0].split(" ")[1:]
+
+    pdf_race_classification = pdfplumber.open(fn_race_results)
+    tables = pdf_race_classification.pages[0].extract_tables()
+    table = tables[0]
+
+    text = ",".join(["no", "grid", "position", "positionOrder", "points", "laps", "time", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
+    fastest_lap = [r[11] for r in table]
+
+    # Handle DNF
+    for t in tables:
+        if t[0][0] == "NOT CLASSIFIED":
+            for row in t[1:]:
+                fastest_lap.append(row[10])
+    # Sort the fastest lap times. The time is in the format MM:SS.mmm
+    fastest_lap = sorted(fastest_lap, key=lambda x: (int(x.split(":")[0]), int(x.split(":")[1].split(".")[0]), int(x.split(":")[1].split(".")[1])))
+    for i in range(len(table)):
+        row = table[i]
+        if row[-1] != '':
+            points = row[-1]
+        else:
+            points = 0
+
+        if i == 0:
+            lap_time = row[7]
+        else:
+            lap_time = row[8]
+
+        text += ",".join([row[1], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
+
+    finishers = len(table)
+
+    # Handle DNF
+    for t in tables:
+        if t[0][0] == "NOT CLASSIFIED":
+            table = t[1:]
+            for i in range(len(table)):
+                row = table[i]
+
+                if row[-1] != '':
+                    points = row[-1]
+                else:
+                    points = 0
+
+                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), '', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap.index(row[10]) + 1), row[10], row[9]]) + "\n"
+
+
+    file = Path(f"csv/{year}_{round}_race_result.csv")
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    file.write_text(text)
+    print("----- CSV file created for race result -----")
     return
 
 if __name__ == "__main__":
@@ -176,6 +236,7 @@ if __name__ == "__main__":
         key = download_files(today.year, round, code)
         convert_quali_classification(key, today.year, round)
         convert_race_lap_analysis(key, today.year, round)
+        create_race_result(key, today.year, round)
     except Exception as e:
         print(e)
         exit(1)
