@@ -1,34 +1,16 @@
-import mysql.connector
-from mysql.connector import Error, MySQLConnection
 from datetime import date
 
 import requests
 from pathlib import Path
 import pdfplumber
 import json
+import sys
 
 endpoint = "https://www.fia.com/sites/default/files/"
 
 files = {
     "quali_classification": "f1_q0_timing_qualifyingsessionprovisionalclassification_v01.pdf",
 }
-
-def create_server_connection(host_name: str, user_name: str, user_password: str, port: int, db_name: str) -> MySQLConnection:
-    connection = None
-    try:
-        connection = mysql.connector.connect(
-            host=host_name,
-            user=user_name,
-            passwd=user_password,
-            port=port,
-            database=db_name
-        )
-        print("MySQL Database connection successful")
-    except Error as err:
-        print(f"Error: '{err}'")
-        exit(2)
-
-    return connection
 
 def download_files(year: int, round: int, country: str) -> str:
     # Format the key to the following format:
@@ -57,7 +39,7 @@ def download_files(year: int, round: int, country: str) -> str:
     print("Files downloaded")
     return key
 
-def convert_quali_classification(key: str):
+def convert_quali_classification(key: str, year: int, round: int):
     fn = f"data/{key}_quali_classification.pdf"
 
     pdf = pdfplumber.open(fn)
@@ -65,7 +47,7 @@ def convert_quali_classification(key: str):
 
     tables = page.extract_tables()
 
-    file = Path(f"csv/{key}_quali_classification.csv")
+    file = Path(f"csv/{year}_{round}_quali_classification.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     # Remove 4th and 5th element of each row
@@ -79,20 +61,10 @@ def convert_quali_classification(key: str):
     return
 
 if __name__ == "__main__":
-    conn = create_server_connection("localhost", "user", "password", 3306, "f1db")
-    query = (
-        "SELECT c.country, r.round FROM circuits AS c "
-        "JOIN races AS r ON c.circuitId = r.circuitId "
-        "WHERE date < %s "
-        "ORDER BY date DESC"
-    )
+    # Get round number and circuit contry from stdin arguments
+    round = int(sys.argv[1])
+    country = sys.argv[2]
     today = date.today()
-    format = today.strftime("%Y-%m-%d")
-    cursor = conn.cursor()
-    cursor.execute(query, (format,))
-    row = cursor.fetchone()
-    print("Found the last race: " + row[0] + " round " + str(row[1]))
-    conn.close()
 
     # Load contries.json file
     file = open("countries.json", "r")
@@ -101,7 +73,7 @@ if __name__ == "__main__":
     # Find the country in the countries.json list
     code = None
     for c in countries:
-        if c["name"] == row[0]:
+        if c["name"] == country:
             # Lowercase the country code
             code = c["code"].lower()
             break
@@ -114,8 +86,8 @@ if __name__ == "__main__":
     print("Country found: " + code)
 
     try :
-        key = download_files(today.year, row[1], code)
-        convert_quali_classification(key)
+        key = download_files(today.year, round, code)
+        convert_quali_classification(key, today.year, round)
     except Exception as e:
         print(e)
         exit(1)
