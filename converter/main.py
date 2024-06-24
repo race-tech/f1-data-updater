@@ -53,9 +53,11 @@ def convert_quali_classification(key: str, year: int, round: int):
     # Remove 4th and 5th element of each row
     tables[0] = [row[:3] + row[5:] for row in tables[0]]
 
-    file.write_text(",".join(["pos", "no", "driver", "entrant", "q1", "laps", "%", "time", "q2", "laps", "time", "q3", "laps", "time"]) + "\n")
+    text = ",".join(["pos", "no", "driver", "entrant", "q1", "laps", "%", "time", "q2", "laps", "time", "q3", "laps", "time"]) + "\n"
     for row in tables[0]:
-        file.write_text(",".join(row) + "\n")
+        text += ",".join(row) + "\n"
+
+    file.write_text(text)
 
     print("CSV file created for quali classification")
     return
