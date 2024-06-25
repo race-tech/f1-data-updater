@@ -14,7 +14,7 @@ jobs:
         env:
           MYSQL_DATABASE: f1db
           MYSQL_USER: user
-          MYSQL_PASSWORD: password
+          MYSQL_ROOT_PASSWORD: password
         ports:
           - 3306:3306
         options: >-
@@ -22,7 +22,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-          --default-authentication-plugin=mysql_native_password
 
     steps:
       - name: Check out repository
