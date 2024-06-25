@@ -1,0 +1,40 @@
+---
+name: F1 database updater
+
+on: workflow_call
+
+jobs:
+  main:
+    name: Update F1 database
+    runs-on: ubuntu-latest
+
+    services:
+      database:
+        image: mysql:5.7
+        env:
+          MYSQL_DATABASE: f1db
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Setup env variables
+        shell: bash
+        run: |
+          # Query the database for the latest F1 data
+          export MYSQL_PWD=password
+          echo "SELECT r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 3306 --protocol=TCP -u user -D f1db | tail -1 | xargs
+          params=$(!!)
+          echo "Params=$params" >> $GITHUB_ENV
+
+      - name: Check params value
+        run: echo ${{ env.Params }}
