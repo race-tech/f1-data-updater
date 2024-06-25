@@ -10,7 +10,7 @@ jobs:
 
     services:
       database:
-        image: mysql:5.7
+        image: thibaultcne/race-tech:db
         env:
           MYSQL_DATABASE: f1db
           MYSQL_USER: user
