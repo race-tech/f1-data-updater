@@ -16,7 +16,7 @@ RUN python3 main.py $ROUND_NUMBER $CIRCUIT_COUNTRY
 
 FROM rust:alpine3.19 AS chef
 
-RUN apk add --no-cache musl-dev
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
 RUN cargo install cargo-chef
 
