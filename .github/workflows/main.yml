@@ -31,13 +31,25 @@ jobs:
       - name: Setup env variables
         shell: bash
         run: |
-          # Query the database for the latest F1 data
           export MYSQL_PWD=password
           params=$(echo "SELECT r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
-          echo "Params=$params" >> $GITHUB_ENV
+          echo "Round=$(echo $param | tr ' ' '\n' | head -1)" >> $GITHUB_ENV
+          echo "Country=$(echo $param | tr ' ' '\n' | tail -1)" >> $GITHUB_ENV
 
       - name: Check params value
-        run: echo ${{ env.Params }}
+        run: |
+          echo ${{ env.Round }}
+          echo ${{ env.Country }}
+
+      - name: Build updater image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: f1db-updater
+          build-args: |
+            ROUND_NUMBER=${{ env.Round }}
+            CIRCUIT_COUNTRY=${{ env.Country }}
 
       - name: Create sql dump
         run: |
