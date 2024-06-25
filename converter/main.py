@@ -15,6 +15,7 @@ files = {
     "race_classification": "f1_r0_timing_raceprovisionalclassification_v01",
     "drivers_championship": "f1_r0_timing_driverschampionship_v01",
     "constructors_championship": "f1_r0_timing_constructorschampionship_v01",
+    "race_pit_stops": "f1_r0_timing_racepitstopsummary_v01"
 }
 
 def download_files(year: int, round: int, country: str) -> str:
@@ -273,6 +274,26 @@ def create_constructors_championship(key: str, year: int, round: int):
     print("----- CSV file created for constructors championship -----")
     return
 
+def create_pit_stops(key: str, year: int, round: int):
+    fn = f"data/{key}_race_pit_stops.pdf"
+
+    pdf = pdfplumber.open(fn)
+
+    text = ",".join(["no", "driver", "stop", "lap", "time", "duration"]) + "\n"
+
+    for page in range(len(pdf.pages)):
+        table = pdf.pages[page].extract_tables()[0]
+
+        for row in table:
+            text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6]]) + "\n"
+
+    file = Path(f"csv/{year}_{round}_pit_stops.csv")
+    file.parent.mkdir(parents=True, exist_ok=True)
+
+    file.write_text(text)
+    print("----- CSV file created for pit stops -----")
+    return
+
 if __name__ == "__main__":
     # Get round number and circuit contry from stdin arguments
     round = int(sys.argv[1])
@@ -305,6 +326,7 @@ if __name__ == "__main__":
         create_race_result(key, today.year, round)
         create_drivers_championship(key, today.year, round)
         create_constructors_championship(key, today.year, round)
+        create_pit_stops(key, today.year, round)
     except Exception as e:
         print(e)
         exit(1)
