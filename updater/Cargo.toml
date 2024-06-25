@@ -12,3 +12,4 @@ sea-query = { version = "0.30.7", default-features = false, features = [
 ] }
 anyhow = "1.0.86"
 mysql = "25.0.1"
+chrono = "0.4.38"
