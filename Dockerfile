@@ -47,4 +47,4 @@ LABEL maintainer="Thibault C. <thibault.chene23@gmail.com>"
 COPY --from=builder /app/updater/target/release/updater /usr/local/bin
 COPY --from=converter /app/csv /etc/csv
 
-ENTRYPOINT ["/usr/local/bin/updater"]
+ENTRYPOINT ["/usr/local/bin/updater", $ROUND_NUMBER, $CIRCUIT_COUNTRY]
