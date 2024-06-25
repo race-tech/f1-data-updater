@@ -53,6 +53,11 @@ jobs:
             ROUND_NUMBER=${{ env.Round }}
             CIRCUIT_COUNTRY=${{ env.Country }}
 
+      - name: Run updater
+        uses: addnab/docker-run-action@v3
+        with:
+          image: f1db-updater
+
       - name: Create sql dump
         run: |
           export MYSQL_PWD=password
