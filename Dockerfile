@@ -25,7 +25,6 @@ RUN cargo new --bin updater
 WORKDIR /app/updater
 
 COPY updater/Cargo.toml .
-COPY updater/Cargo.lock .
 
 FROM chef AS planner
 
