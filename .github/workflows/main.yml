@@ -16,7 +16,7 @@ jobs:
           MYSQL_USER: user
           MYSQL_ROOT_PASSWORD: password
         ports:
-          - 33306:3306
+          - 13306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
@@ -28,8 +28,7 @@ jobs:
         run: |
           # Query the database for the latest F1 data
           export MYSQL_PWD=password
-          echo "SELECT r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 33306 --protocol=TCP -u root -D f1db | tail -1 | xargs
-          params=$(!!)
+          params=$(echo "SELECT r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
           echo "Params=$params" >> $GITHUB_ENV
 
       - name: Check params value
