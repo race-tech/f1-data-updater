@@ -38,3 +38,15 @@ jobs:
 
       - name: Check params value
         run: echo ${{ env.Params }}
+
+      - name: Create sql dump
+        run: |
+          export MYSQL_PWD=password
+          mysqldump --host 127.0.0.1 --port 13306 -uroot f1db > f1db.sql
+          tar -czvf f1db.sql.gz f1db.sql
+
+      - name: Upload sql dump
+        uses: actions/upload-artifact@v2
+        with:
+          name: f1db.sql.gz
+          path: f1db.sql.gz
