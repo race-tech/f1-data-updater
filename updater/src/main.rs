@@ -1,18 +1,22 @@
-use std::{env, process::exit};
+use std::env;
 
 use chrono::Datelike;
-use mysql::{prelude::*, PooledConn};
+use mysql::{prelude::*, Transaction};
+use sea_query::{MysqlQueryBuilder, Query};
 
 mod models;
 mod tables;
 
+use tables::*;
+
 fn main() -> anyhow::Result<()> {
+    let round = env::args().nth(1).unwrap().parse::<u16>()?;
+    let year = chrono::Utc::now().year();
+    let key = format!("{year}_{round}");
+
     let url = "mysql://root:password@localhost:13306/f1db";
     let pool = mysql::Pool::new(url)?;
     let mut conn = pool.get_conn()?;
-
-    let round = env::args().nth(1).unwrap().parse::<u16>()?;
-    let year = chrono::Utc::now().year();
 
     let race_id = *conn
         .query_map(
@@ -22,19 +26,355 @@ fn main() -> anyhow::Result<()> {
         .first()
         .expect("race not found");
 
-    check(race_id, &mut conn)?;
+    let mut tx = conn.start_transaction(mysql::TxOpts::default())?;
+
+    lap_times(&key, race_id, &mut tx)?;
+    pit_stops(&key, race_id, &mut tx)?;
+    qualifying_results(&key, race_id, &mut tx)?;
+    driver_results(&key, race_id, &mut tx)?;
+    constructor_results(&key, race_id, &mut tx)?;
+    driver_championship(&key, race_id, &mut tx)?;
+    constructor_championship(&key, race_id, &mut tx)?;
+
+    tx.commit()?;
 
     Ok(())
 }
 
-fn check(race_id: i32, conn: &mut PooledConn) -> anyhow::Result<()> {
-    let results: Vec<i32> = conn.query(format!(
-        "SELECT resultId FROM results WHERE raceId = {race_id}"
-    ))?;
+fn lap_times(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_laps_analysis.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
 
-    if !results.is_empty() {
-        println!("table already have been updated");
-        exit(0);
+    for r in rdr.deserialize::<models::LapAnalysis>() {
+        let la = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", la.driver),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+
+        let q = Query::insert()
+            .into_table(LapTimes::Table)
+            .columns([
+                LapTimes::RaceID,
+                LapTimes::DriverID,
+                LapTimes::Lap,
+                LapTimes::Position,
+                LapTimes::Time,
+                LapTimes::Milliseconds,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                la.lap.into(),
+                la.position.into(),
+                la.time.into(),
+                la.milliseconds.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn pit_stops(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_pit_stops.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::PitStop>() {
+        let ps = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", ps.no),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+
+        let q = Query::insert()
+            .into_table(PitStops::Table)
+            .columns([
+                PitStops::RaceID,
+                PitStops::DriverID,
+                PitStops::Stop,
+                PitStops::Lap,
+                PitStops::Time,
+                PitStops::Duration,
+                PitStops::Milliseconds,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                ps.stop.into(),
+                ps.lap.into(),
+                ps.time.into(),
+                ps.duration.into(),
+                ps.milliseconds.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn qualifying_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_quali_classification.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::QualificationOrder>() {
+        let qo = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", qo.no),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    qo.entrant
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        // TODO: Handle status
+
+        let q = Query::insert()
+            .into_table(Qualifying::Table)
+            .columns([
+                Qualifying::RaceID,
+                Qualifying::DriverID,
+                Qualifying::ConstructorID,
+                Qualifying::Number,
+                Qualifying::Position,
+                Qualifying::Q1,
+                Qualifying::Q2,
+                Qualifying::Q3,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                constructor_id.into(),
+                qo.no.into(),
+                qo.pos.into(),
+                qo.q1_time.into(),
+                qo.q2_time.into(),
+                qo.q3_time.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn driver_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_driver_race_result.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::DriverRaceResult>() {
+        let drr = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", drr.no),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    drr.entrant
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        // TODO: Handle status
+
+        let q = Query::insert()
+            .into_table(Results::Table)
+            .columns([
+                Results::RaceID,
+                Results::DriverID,
+                Results::ConstructorID,
+                Results::Number,
+                Results::Grid,
+                Results::Position,
+                Results::PositionText,
+                Results::PositionOrder,
+                Results::Points,
+                Results::Laps,
+                Results::Time,
+                Results::Milliseconds,
+                Results::FastestLap,
+                Results::Rank,
+                Results::FastestLapTime,
+                Results::FastestLapSpeed,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                constructor_id.into(),
+                drr.no.into(),
+                drr.grid.into(),
+                drr.position.into(),
+                drr.position.into(),
+                drr.position_order.into(),
+                drr.points.into(),
+                drr.laps.into(),
+                drr.time.into(),
+                drr.milliseconds.into(),
+                drr.fastest_lap.into(),
+                drr.rank.into(),
+                drr.fatest_lap_time.into(),
+                drr.fastest_lap_speed.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn constructor_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_constructor_race_result.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::ConstructorRaceResult>() {
+        let crr = r?;
+
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    crr.constructor
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        let q = Query::insert()
+            .into_table(ConstructorResults::Table)
+            .columns([
+                ConstructorResults::RaceID,
+                ConstructorResults::ConstructorID,
+                ConstructorResults::Points,
+            ])
+            .values([race_id.into(), constructor_id.into(), crr.points.into()])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn driver_championship(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_drivers_championship.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::DriverChampionship>() {
+        let dd = r?;
+        let surname = dd
+            .driver
+            .split_once(' ')
+            .expect("no driver surname")
+            .1
+            .to_ascii_lowercase();
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE surname = {}", surname),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+
+        let q = Query::insert()
+            .into_table(DriverStandings::Table)
+            .columns([
+                DriverStandings::RaceID,
+                DriverStandings::DriverID,
+                DriverStandings::Points,
+                DriverStandings::Position,
+                DriverStandings::PositionText,
+                DriverStandings::Wins,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                dd.points.into(),
+                dd.position.into(),
+                dd.position.into(),
+                dd.wins.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn constructor_championship(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = format!("/etc/csv/{key}_constructors_championship.csv");
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::ConstructorChampionship>() {
+        let cc = r?;
+
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    cc.constructor
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        let q = Query::insert()
+            .into_table(ConstructorStandings::Table)
+            .columns([
+                ConstructorStandings::RaceID,
+                ConstructorStandings::ConstructorID,
+                ConstructorStandings::Points,
+                ConstructorStandings::Position,
+                ConstructorStandings::PositionText,
+                ConstructorStandings::Wins,
+            ])
+            .values([
+                race_id.into(),
+                constructor_id.into(),
+                cc.points.into(),
+                cc.position.into(),
+                cc.position.into(),
+                cc.wins.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
     }
 
     Ok(())

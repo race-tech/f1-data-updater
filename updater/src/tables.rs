@@ -101,4 +101,24 @@ pub enum Results {
     DriverID,
     #[iden = "constructorId"]
     ConstructorID,
+    Number,
+    Grid,
+    Position,
+    #[iden = "positionText"]
+    PositionText,
+    #[iden = "positionOrder"]
+    PositionOrder,
+    Points,
+    Laps,
+    Time,
+    Milliseconds,
+    #[iden = "fastestLap"]
+    FastestLap,
+    Rank,
+    #[iden = "fastestLapTime"]
+    FastestLapTime,
+    #[iden = "fastestLapSpeed"]
+    FastestLapSpeed,
+    #[iden = "statusId"]
+    StatusID,
 }
