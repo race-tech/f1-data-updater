@@ -66,7 +66,7 @@ def convert_quali_classification(key: str, year: int, round: int):
     # Remove 4th and 5th element of each row
     tables[0] = [row[:3] + row[5:] for row in tables[0]]
 
-    text = ",".join(["pos", "no", "driver", "entrant", "q1", "laps", "%", "time", "q2", "laps", "time", "q3", "laps", "time"]) + "\n"
+    text = ",".join(["pos", "no", "driver", "entrant", "q1", "q1_laps", "%", "q1_time", "q2", "q2_laps", "q2_time", "q3", "q3_laps", "q3_time"]) + "\n"
     for row in tables[0]:
         text += ",".join(row) + "\n"
 
@@ -141,11 +141,12 @@ def convert_race_lap_analysis(key: str, year: int, round: int):
     file = Path(f"csv/{year}_{round}_laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
-    text = ",".join(["lap", "driver", "time", "position"]) + "\n"
+    text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
     for driver in lap_analysis:
         for i in range(len(lap_analysis[driver])):
             lap = lap_analysis[driver][i]
-            text += f"{i + 1},{driver},{lap[0]},{lap[1]}\n"
+            milliseconds = int(lap[0].split(":")[0]) * 60000 + int(lap[0].split(":")[1]) * 1000 + int(lap[0].split(":")[2].split(".")[0]) * 10
+            text += f"{i + 1},{driver},{lap[0]},{lap[1]},{milliseconds}\n"
 
     file.write_text(text)
     print("----- CSV file created for laps analysis -----")
@@ -162,7 +163,7 @@ def create_race_result(key: str, year: int, round: int):
     tables = pdf_race_classification.pages[0].extract_tables()
     table = tables[0]
 
-    text = ",".join(["no", "grid", "position", "positionOrder", "points", "laps", "time", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
+    text = ",".join(["no", "entrant", "grid", "position", "positionOrder", "points", "laps", "time", "milliseconds", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
     fastest_lap = [r[11] for r in table]
     constructor_result = {}
 
@@ -190,7 +191,11 @@ def create_race_result(key: str, year: int, round: int):
         else:
             constructor_result[row[5]] += points
 
-        text += ",".join([row[1], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
+        # Convert the time to milliseconds (time format: hh:MM:SS.mmm)
+        time = row[7].split(":")
+        milliseconds = int(time[0]) * 3600000 + int(time[1]) * 60000 + int(time[2].split(".")[0]) * 1000 + int(time[2].split(".")[1])
+
+        text += ",".join([row[1], row[5], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
 
     finishers = len(table)
 
@@ -279,13 +284,14 @@ def create_pit_stops(key: str, year: int, round: int):
 
     pdf = pdfplumber.open(fn)
 
-    text = ",".join(["no", "driver", "stop", "lap", "time", "duration"]) + "\n"
+    text = ",".join(["no", "driver", "stop", "lap", "time", "duration", "milliseconds"]) + "\n"
 
     for page in range(len(pdf.pages)):
         table = pdf.pages[page].extract_tables()[0]
 
         for row in table:
-            text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6]]) + "\n"
+            milliseconds = row[6].split(".")[0] * 1000 + row[6].split(".")[1]
+            text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6], str(milliseconds)]) + "\n"
 
     file = Path(f"csv/{year}_{round}_pit_stops.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
