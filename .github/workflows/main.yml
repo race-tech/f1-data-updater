@@ -27,9 +27,6 @@ jobs:
         options: --health-cmd="mysqladmin ping -h localhost -u ${MYSQL_USER} -p${MYSQL_PASSWORD}" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-      - name: Wait for MySQL to initialize
-        run: sleep 15 # Adding a delay
-
       - name: Verify f1db DB exists
         run: |
           export MYSQL_PWD=password
