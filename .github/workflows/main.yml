@@ -4,9 +4,53 @@ name: F1 database updater
 on: workflow_dispatch
 
 jobs:
+  setup:
+    name: Setup env variables and check if update is needed
+    runs-on: ubuntu-latest
+
+    outputs:
+      race_id: ${{ steps.setup.outputs.race_id }}
+      round: ${{ steps.setup.outputs.round }}
+      country: ${{ steps.setup.outputs.country }}
+      should_update: ${{ steps.setup.outputs.should_update }}
+
+    services:
+      database:
+        image: thibaultcne/race-tech:db
+        env:
+          MYSQL_DATABASE: f1db
+          MYSQL_USER: user
+          MYSQL_ROOT_PASSWORD: password
+        ports:
+          - 13306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Verify f1db DB exists
+        run: |
+          export MYSQL_PWD=password
+          mysql --host 127.0.0.1 --port 13306 -uroot -e "SHOW DATABASES LIKE 'f1db'"
+
+      - name: Setup env variables
+        id: setup
+        shell: bash
+        run: |
+          export MYSQL_PWD=password
+          params=$(echo "SELECT r.raceId, r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
+          round=$(echo $params | tr ' ' '\n' | head -2 | tail -1)
+          race_id=$(echo $params | tr ' ' '\n' | head -2 | head -1)
+          country=$(echo $params | tr ' ' '\n' | tail -1)
+          should_update=$([ $(echo "SELECT resultId FROM results WHERE raceId = $race_id" | mysql -h 127.0.0.1 -P 3306 --protocol=TCP -u root -D f1db | wc -l) -ge 1 ] && echo 'false' || echo 'true')
+          echo "round=$round" >> $GITHUB_OUTPUT
+          echo "race_id=$race_id" >> $GITHUB_OUTPUT
+          echo "country=$country" >> $GITHUB_OUTPUT
+          echo "should_update=$should_update" >> $GITHUB_OUTPUT
+
   main:
     name: Update F1 database
     runs-on: ubuntu-latest
+    needs: setup
+    if: needs.setup.outputs.should_update == 'true'
 
     services:
       database:
@@ -28,20 +72,11 @@ jobs:
           export MYSQL_PWD=password
           mysql --host 127.0.0.1 --port 13306 -uroot -e "SHOW DATABASES LIKE 'f1db'"
 
-      - name: Setup env variables
-        shell: bash
-        run: |
-          export MYSQL_PWD=password
-          params=$(echo "SELECT r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
-          round=$(echo $params | tr ' ' '\n' | head -1)
-          country=$(echo $params | tr ' ' '\n' | tail -1)
-          echo "Round=$round" >> $GITHUB_ENV
-          echo "Country=$country" >> $GITHUB_ENV
-
       - name: Check params value
         run: |
-          echo ${{ env.Round }}
-          echo ${{ env.Country }}
+          echo ${{ needs.setup.outputs.round }}
+          echo ${{ needs.setup.outputs.country }}
+          echo ${{ needs.setup.outputs.race_id }}
 
       - name: Build updater image
         uses: docker/build-push-action@v6
@@ -50,8 +85,8 @@ jobs:
           push: false
           tags: f1db-updater
           build-args: |
-            ROUND_NUMBER=${{ env.Round }}
-            CIRCUIT_COUNTRY=${{ env.Country }}
+            ROUND_NUMBER=${{ needs.setup.outputs.round }}
+            CIRCUIT_COUNTRY=${{ needs.setup.outputs.country }}
 
       - name: Run updater
         uses: addnab/docker-run-action@v3
