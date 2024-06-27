@@ -40,7 +40,7 @@ jobs:
           round=$(echo $params | tr ' ' '\n' | head -2 | tail -1)
           race_id=$(echo $params | tr ' ' '\n' | head -2 | head -1)
           country=$(echo $params | tr ' ' '\n' | tail -1)
-          should_update=$([ $(echo "SELECT resultId FROM results WHERE raceId = $race_id" | mysql -h 127.0.0.1 -P 3306 --protocol=TCP -u root -D f1db | wc -l) -ge 1 ] && echo 'false' || echo 'true')
+          should_update=$([ $(echo "SELECT resultId FROM results WHERE raceId = $race_id" | mysql -h 127.0.0.1 -P 13306 --protocol=TCP -u root -D f1db | wc -l) -ge 1 ] && echo 'false' || echo 'true')
           echo "round=$round" >> $GITHUB_OUTPUT
           echo "race_id=$race_id" >> $GITHUB_OUTPUT
           echo "country=$country" >> $GITHUB_OUTPUT
