@@ -1,7 +1,12 @@
 ---
 name: F1 database updater
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      distinct_id:
+        description: "A unique identifier for the workflow run"
+        required: true
 
 jobs:
   setup:
