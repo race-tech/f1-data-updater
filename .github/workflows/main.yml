@@ -19,11 +19,10 @@ jobs:
         image: thibaultcne/race-tech:db
         env:
           MYSQL_DATABASE: f1db
-          MYSQL_USER: user
           MYSQL_ROOT_PASSWORD: password
         ports:
           - 13306:3306
-        options: --health-cmd="mysql -u root -e 'SHOW DATABASES LIKE f1db'" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mysql -u root -ppassword -e 'SHOW DATABASES LIKE f1db'" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       - name: Wait for MySQL to initialize
