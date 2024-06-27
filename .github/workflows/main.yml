@@ -52,6 +52,10 @@ jobs:
     name: Update F1 database
     runs-on: ubuntu-latest
     needs: setup
+
+    outputs:
+      should_update: ${{ needs.setup.outputs.should_update }}
+
     if: needs.setup.outputs.should_update == 'true'
 
     services:
