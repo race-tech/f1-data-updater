@@ -30,7 +30,7 @@ jobs:
         options: --health-cmd="mysqladmin ping -u root" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-      - name: echo distinct ID
+      - name: echo distinct ID ${{ github.event.inputs.distinct_id }}
         run: echo ${{ github.event.inputs.distinct_id }}
 
       - name: Wait for MySQL to initialize
