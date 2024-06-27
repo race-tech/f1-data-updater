@@ -19,7 +19,6 @@ jobs:
         image: thibaultcne/race-tech:db
         env:
           MYSQL_DATABASE: f1db
-          MYSQL_PWD: password
           MYSQL_USER: user
           MYSQL_PASSWORD: password
           MYSQL_ROOT_PASSWORD: password
