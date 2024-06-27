@@ -25,7 +25,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: password
         ports:
           - 13306:3306
-        options: --health-cmd="mysqladmin ping -h localhost -u root" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mysqladmin ping -h localhost -u ${MYSQL_USER} -p${MYSQL_PASSWORD}" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       - name: Wait for MySQL to initialize
