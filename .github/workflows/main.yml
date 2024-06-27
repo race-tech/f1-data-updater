@@ -20,6 +20,8 @@ jobs:
         env:
           MYSQL_DATABASE: f1db
           MYSQL_PWD: password
+          MYSQL_USER: user
+          MYSQL_PASSWORD: password
           MYSQL_ROOT_PASSWORD: password
         ports:
           - 13306:3306
