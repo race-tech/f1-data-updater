@@ -18,6 +18,7 @@ jobs:
       round: ${{ steps.setup.outputs.round }}
       country: ${{ steps.setup.outputs.country }}
       should_update: ${{ steps.setup.outputs.should_update }}
+      is_sprint: ${{ steps.setup.outputs.is_sprint }}
 
     services:
       database:
@@ -46,15 +47,18 @@ jobs:
         shell: bash
         run: |
           export MYSQL_PWD=password
-          params=$(echo "SELECT r.raceId, r.round, c.country FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
+          params=$(echo "SELECT r.raceId, r.round, c.country, r.sprint_date FROM circuits AS c JOIN races AS r ON c.circuitId = r.circuitId WHERE r.date <= '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
           round=$(echo $params | tr ' ' '\n' | head -2 | tail -1)
           race_id=$(echo $params | tr ' ' '\n' | head -2 | head -1)
-          country=$(echo $params | tr ' ' '\n' | tail -1)
+          country=$(echo $params | tr ' ' '\n' | tail -2 | head -1)
+          sprint_race_date=$(echo $params | tr ' ' '\n' | tail -2 | tail -1)
           should_update=$([ $(echo "SELECT resultId FROM results WHERE raceId = $race_id" | mysql -h 127.0.0.1 -P 13306 --protocol=TCP -u root -D f1db | wc -l) -ge 1 ] && echo 'false' || echo 'true')
+          is_sprint=$([[ $sprint_race_date -eq "NULL" ]]) && echo 'false' || echo 'true'
           echo "round=$round" >> $GITHUB_OUTPUT
           echo "race_id=$race_id" >> $GITHUB_OUTPUT
           echo "country=$country" >> $GITHUB_OUTPUT
           echo "should_update=$should_update" >> $GITHUB_OUTPUT
+          echo "is_sprint=$is_sprint" >> $GITHUB_OUTPUT
 
   main:
     name: Update F1 database
@@ -90,6 +94,7 @@ jobs:
           echo ${{ needs.setup.outputs.round }}
           echo ${{ needs.setup.outputs.country }}
           echo ${{ needs.setup.outputs.race_id }}
+          echo ${{ needs.setup.outputs.is_sprint }}
 
       - name: Build updater image
         uses: docker/build-push-action@v6
@@ -100,6 +105,7 @@ jobs:
           build-args: |
             ROUND_NUMBER=${{ needs.setup.outputs.round }}
             CIRCUIT_COUNTRY=${{ needs.setup.outputs.country }}
+            IS_RACE_SPRINT=${{ needs.setup.outputs.is_sprint }}
 
       - name: Run updater
         uses: addnab/docker-run-action@v3

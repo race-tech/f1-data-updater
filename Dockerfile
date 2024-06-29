@@ -2,6 +2,7 @@ FROM python:3.12 AS converter
 
 ARG ROUND_NUMBER
 ARG CIRCUIT_COUNTRY
+ARG IS_SPRINT
 
 WORKDIR /app
 
@@ -12,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY converter/main.py .
 
-RUN python3 main.py $ROUND_NUMBER $CIRCUIT_COUNTRY
+RUN python3 main.py $ROUND_NUMBER $CIRCUIT_COUNTRY $IS_SPRINT
 
 FROM rust:alpine3.19 AS chef
 
@@ -47,4 +48,4 @@ LABEL maintainer="Thibault C. <thibault.chene23@gmail.com>"
 COPY --from=builder /app/updater/target/release/updater /usr/local/bin
 COPY --from=converter /app/csv /etc/csv
 
-ENTRYPOINT ["/usr/local/bin/updater", $ROUND_NUMBER, $CIRCUIT_COUNTRY]
+ENTRYPOINT ["/usr/local/bin/updater", $ROUND_NUMBER, $CIRCUIT_COUNTRY, $IS_SPRINT]
