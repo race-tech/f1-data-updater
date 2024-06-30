@@ -11,8 +11,8 @@ use tables::*;
 
 fn main() -> anyhow::Result<()> {
     let round = env::args().nth(1).unwrap().parse::<u16>()?;
+    let _is_sprint = env::args().nth(2).unwrap().parse::<bool>()?;
     let year = chrono::Utc::now().year();
-    let key = format!("{year}_{round}");
 
     let url = "mysql://root:password@localhost:13306/f1db";
     let pool = mysql::Pool::new(url)?;
@@ -28,21 +28,21 @@ fn main() -> anyhow::Result<()> {
 
     let mut tx = conn.start_transaction(mysql::TxOpts::default())?;
 
-    lap_times(&key, race_id, &mut tx)?;
-    pit_stops(&key, race_id, &mut tx)?;
-    qualifying_results(&key, race_id, &mut tx)?;
-    driver_results(&key, race_id, &mut tx)?;
-    constructor_results(&key, race_id, &mut tx)?;
-    driver_championship(&key, race_id, &mut tx)?;
-    constructor_championship(&key, race_id, &mut tx)?;
+    lap_times(race_id, &mut tx)?;
+    pit_stops(race_id, &mut tx)?;
+    qualifying_results(race_id, &mut tx)?;
+    driver_results(race_id, &mut tx)?;
+    constructor_results(race_id, &mut tx)?;
+    driver_championship(race_id, &mut tx)?;
+    constructor_championship(race_id, &mut tx)?;
 
     tx.commit()?;
 
     Ok(())
 }
 
-fn lap_times(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_laps_analysis.csv");
+fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/laps_analysis.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::LapAnalysis>() {
@@ -82,8 +82,8 @@ fn lap_times(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()
     Ok(())
 }
 
-fn pit_stops(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_pit_stops.csv");
+fn pit_stops(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/pit_stops.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::PitStop>() {
@@ -125,8 +125,8 @@ fn pit_stops(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()
     Ok(())
 }
 
-fn qualifying_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_quali_classification.csv");
+fn qualifying_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/quali_classification.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::QualificationOrder>() {
@@ -182,8 +182,8 @@ fn qualifying_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::
     Ok(())
 }
 
-fn driver_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_driver_race_result.csv");
+fn driver_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/driver_race_result.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::DriverRaceResult>() {
@@ -255,8 +255,8 @@ fn driver_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Resu
     Ok(())
 }
 
-fn constructor_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_constructor_race_result.csv");
+fn constructor_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/constructor_race_result.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::ConstructorRaceResult>() {
@@ -289,8 +289,8 @@ fn constructor_results(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow:
     Ok(())
 }
 
-fn driver_championship(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_drivers_championship.csv");
+fn driver_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/drivers_championship.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::DriverChampionship>() {
@@ -336,8 +336,8 @@ fn driver_championship(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow:
     Ok(())
 }
 
-fn constructor_championship(key: &str, race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = format!("/etc/csv/{key}_constructors_championship.csv");
+fn constructor_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/constructors_championship.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::ConstructorChampionship>() {
