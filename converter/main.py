@@ -155,11 +155,7 @@ def create_sprint_lap_analysis():
     fn_lap_analysis = f"data/sprint_analysis.pdf"
     fn_lap_chart = f"data/sprint_lap_chart.pdf"
 
-    lap_analysis_options = {
-        "intersection_x_tolerance": 10,
-        "horizontal_strategy": "text",
-        "intersection_y_tolerance": 25,
-    }
+    lap_analysis_options = {}
 
     pdf_lap_analysis = pdfplumber.open(fn_lap_analysis)
     pdf_lap_chart = pdfplumber.open(fn_lap_chart)
@@ -179,33 +175,26 @@ def create_sprint_lap_analysis():
     for p in range(len(pdf_lap_analysis.pages)):
         page = pdf_lap_analysis.pages[p]
         tables = page.extract_tables(lap_analysis_options)
-        table = tables[0]
-        table = table[4:]
-
-        _drivers = table[0][0]
-        _drivers = _drivers.split(" ")
+        texts = page.extract_text().split("\n")
         drivers = []
-        for i in range(0, len(_drivers), 3):
-            drivers.append([_drivers[i], _drivers[i + 1] + " " + _drivers[i + 2]])
 
-        table = table[4:]
+        for i in range(len(texts)):
+            if texts[i].startswith("LAP TIME"):
+                l = texts[i - 1].split(" ")
+                for j in range(0, len(l), 3):
+                    drivers.append([l[j], l[j + 1] + " " + l[j + 2]])
 
-        for row in table:
-            not_empty = [r for r in row if r != '']
-            if len(not_empty) == 0:
-                # Handle the case where the row is empty
-                continue
+        for i in range(0, len(tables), 2):
+            driver_id = i // 2
 
-            for driver in range(len(drivers)):
-                r = row[driver * 7 + driver:driver * 7 + 7 + driver]
+            for row in tables[i] + tables[i + 1]:
+                if len(row) == 0 or row[0] == '':
+                    continue
 
-                if not drivers[driver][0] in lap_analysis:
-                    lap_analysis[drivers[driver][0]] = {}
+                if not drivers[driver_id][0] in lap_analysis:
+                    lap_analysis[drivers[driver_id][0]] = {}
 
-                if r[0] != '' and r[0] != None:
-                    lap_analysis[drivers[driver][0]][r[0]] = r[2]
-                if r[4] != '' and r[4] != None:
-                    lap_analysis[drivers[driver][0]][r[4]] = r[6]
+                lap_analysis[drivers[driver_id][0]][row[0]] = row[2]
 
         for driver in lap_analysis:
             if not isinstance(lap_analysis[driver], dict):
@@ -254,7 +243,8 @@ def create_sprint_result():
     for t in tables:
         if t[0][0] == "NOT CLASSIFIED":
             for row in t[1:]:
-                fastest_lap.append(row[10])
+                if row[10] != "":
+                    fastest_lap.append(row[10])
     # Sort the fastest lap times. The time is in the format MM:SS.mmm
     fastest_lap = sorted(fastest_lap, key=lambda x: (int(x.split(":")[0]), int(x.split(":")[1].split(".")[0]), int(x.split(":")[1].split(".")[1])))
     for i in range(len(table)):
@@ -274,11 +264,19 @@ def create_sprint_result():
         else:
             constructor_result[row[5]] += points
 
-        # Convert the time to milliseconds (time format: hh:MM:SS.mmm)
+        # Convert the time to milliseconds (time format: MM:SS.mmm)
         time = row[7].split(":")
-        milliseconds = int(time[0]) * 3600000 + int(time[1]) * 60000 + int(time[2].split(".")[0]) * 1000 + int(time[2].split(".")[1])
+        min = int(time[0])
+        sec = int(time[1].split(".")[0])
+        mmm = int(time[1].split(".")[1])
+        milliseconds = min * 60000 + sec * 1000 + mmm
 
-        text += ",".join([row[1], row[5], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
+        if row[11] in fastest_lap:
+            fastest_lap_index = fastest_lap.index(row[11]) + 1
+        else:
+            fastest_lap_index = 0
+
+        text += ",".join([row[1], row[5], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
 
     finishers = len(table)
 
@@ -299,7 +297,12 @@ def create_sprint_result():
                 else:
                     constructor_result[row[4]] += points
 
-                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap.index(row[10]) + 1), row[10], row[9]]) + "\n"
+                if row[11] in fastest_lap:
+                    fastest_lap_index = fastest_lap.index(row[11]) + 1
+                else:
+                    fastest_lap_index = 0
+
+                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
@@ -419,7 +422,8 @@ def create_race_result():
     for t in tables:
         if t[0][0] == "NOT CLASSIFIED":
             for row in t[1:]:
-                fastest_lap.append(row[10])
+                if row[10] != "":
+                    fastest_lap.append(row[10])
     # Sort the fastest lap times. The time is in the format MM:SS.mmm
     fastest_lap = sorted(fastest_lap, key=lambda x: (int(x.split(":")[0]), int(x.split(":")[1].split(".")[0]), int(x.split(":")[1].split(".")[1])))
     for i in range(len(table)):
@@ -589,9 +593,9 @@ if __name__ == "__main__":
         create_pit_stops()
 
         if is_sprint:
-            print("Handling sprint weekend")
-            # create_sprint_lap_analysis()
-            # create_sprint_result()
+            print("----- Handling sprint weekend -----")
+            create_sprint_lap_analysis()
+            create_sprint_result()
     except Exception as e:
         print(e)
         exit(1)
