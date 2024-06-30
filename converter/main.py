@@ -1,4 +1,8 @@
 from datetime import date
+from re import sub
+from urllib.request import urlopen
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 
 import requests
 from pathlib import Path
@@ -6,95 +10,133 @@ import pdfplumber
 import json
 import sys
 
-endpoint = "https://www.fia.com/sites/default/files/"
+base = "https://www.fia.com"
+endpoint = "https://www.fia.com/events/fia-formula-one-world-championship"
 
-files = {
-    "quali_classification": "f1_q0_timing_qualifyingsessionprovisionalclassification_v01",
-    "race_analysis": "f1_r0_timing_racelapanalysis_v01",
-    "race_lap_chart": "f1_r0_timing_racelapchart_v01",
-    "race_classification": "f1_r0_timing_raceprovisionalclassification_v01",
-    "drivers_championship": "f1_r0_timing_driverschampionship_v01",
-    "constructors_championship": "f1_r0_timing_constructorschampionship_v01",
-    "race_pit_stops": "f1_r0_timing_racepitstopsummary_v01"
+titles = {
+    "RACE": {
+        "Race Provisional Classification": "race_classification",
+        "Provisional Race Classification": "race_classification",
+        "Race Lap Analysis": "race_analysis",
+        "Race Lap Chart": "race_lap_chart",
+        "Lap Analysis": "race_analysis",
+        "Lap Chart": "race_lap_chart",
+        "Drivers Championship": "drivers_championship",
+        "Constructors Championship": "constructors_championship",
+        "Drivers' Championship ": "drivers_championship",
+        "Drivers' Championship  Constructors Championship": "constructors_championship",
+        "Race Pit Stop Summary": "race_pit_stops",
+        "Pit Stop Summary": "race_pit_stops",
+    },
+    "QUALIFYING": {
+        "Provisional Classification": "quali_classification"
+    },
+    "SPRINT RACE": {
+        "Sprint Provisional Classification": "sprint_classification",
+        "Sprint Lap Analysis": "sprint_analysis",
+        "Sprint Lap Chart": "sprint_lap_chart"
+    }
 }
 
-sprint_files = {
-    "sprint_classification": "f1_s0_timing_sprintprovisionalclassification_v01",
-    "sprint_analysis": "f1_s0_timing_sprintlapanalysis_v01",
-    "sprint_lap_chart": "f1_s0_timing_sprintlapchart_v01"
-}
-
-def download_files(year: int, round: int, country: str) -> str:
+def download_files(year: int, race_name: str, is_sprint: bool):
     # Format the key to the following format:
     # year_round_country
     # Note: the round is a 2 digit number
-    key = f"{year}_{round:02d}_{country}"
+    complete_url = endpoint + f"/season-{year}/{race_name}/eventtiming-information"
+    print("Event timing url: " +complete_url)
+    page = urlopen(complete_url)
+    html = page.read().decode("utf-8")
+    soup = BeautifulSoup(html, "html.parser")
 
-    # Download the files
-    for file in files:
-        partial_url = endpoint + key + "_" + files[file]
-        complete_url = partial_url + ".pdf"
+    # Select the div.content > div.middle
+    content = soup.find("div", class_="content")
 
-        # Get the file
-        resp = requests.get(complete_url)
-        i = 1
-        while resp.status_code != 200 and i < 10:
-            print(f"Error: {resp.status_code} for {complete_url}")
-            complete_url = partial_url + f"_{i}" + ".pdf"
-            resp = requests.get(complete_url)
-            i += 1
+    if not isinstance(content, Tag):
+        print("Error: content not found")
+        exit(1)
 
-        # Save the file
-        if resp.status_code == 200:
-            print(complete_url + " downloaded")
-            filepath = Path(f"data/{key}_{file}.pdf")
-            filepath.parent.mkdir(parents=True, exist_ok=True)
-            filepath.write_bytes(resp.content)
-        else:
-            print(f"Error: {resp.status_code}")
+    middle = content.find("div", class_="middle")
+
+    if not isinstance(middle, Tag):
+        print("Error: middle not found")
+        exit(1)
+
+    files_url = {
+        "RACE": [],
+        "QUALIFYING": [],
+        "SPRINT RACE": [],
+    }
+    current_header = ""
+
+    for div in middle.findChildren():
+        if not isinstance(div, Tag):
+            continue
+
+        b_tag = div.find("b")
+
+        if div.name == "p" and b_tag is not None:
+            for header in files_url:
+                if header == b_tag.text:
+                    current_header = header
+                    break
+
+        classes = div.get("class")
+
+        if classes is None or classes[0] != 'for-documents':
+            continue
+
+        if current_header == "":
+            continue
+
+        a = div.find("a")
+
+        if not isinstance(a, Tag):
+            print("Error: a tag not found")
             exit(1)
 
-    # Job done
-    print("----- Files downloaded -----")
-    return key
+        title_div = div.find("div", class_="title")
 
-def download_sprint_files(key: str):
-    # Download the files
-    for file in sprint_files:
-        partial_url = endpoint + key + "_" + files[file]
-        complete_url = partial_url + ".pdf"
-
-        # Get the file
-        resp = requests.get(complete_url)
-        i = 1
-        while resp.status_code != 200 and i < 10:
-            print(f"Error: {resp.status_code} for {complete_url}")
-            complete_url = partial_url + f"_{i}" + ".pdf"
-            resp = requests.get(complete_url)
-            i += 1
-
-        # Save the file
-        if resp.status_code == 200:
-            print(complete_url + " downloaded")
-            filepath = Path(f"data/{key}_{file}.pdf")
-            filepath.parent.mkdir(parents=True, exist_ok=True)
-            filepath.write_bytes(resp.content)
-        else:
-            print(f"Error: {resp.status_code}")
+        if not isinstance(title_div, Tag):
+            print("Error: title_div not found")
             exit(1)
 
-    # Job done
-    print("----- Sprint files downloaded -----")
+        url = a.get("href")
+        title = title_div.text
 
-def create_quali_classification(key: str, year: int, round: int):
-    fn = f"data/{key}_quali_classification.pdf"
+        files_url[current_header].append((title, url))
+
+    print("----- Files found -----")
+
+    for header in files_url:
+        for files in files_url[header]:
+            if not files[0] in titles[header]:
+                print(f"Skipping: {files[0]}")
+                continue
+
+            dl_url = base + files[1]
+            fn = titles[header][files[0]]
+
+            print(f"Downloading: {dl_url} to {fn}.pdf")
+
+            resp = requests.get(dl_url)
+
+            if resp.status_code != 200:
+                print(f"Error could not download: {dl_url} - {resp.status_code}")
+                exit(1)
+
+            filepath = Path(f"data/{fn}.pdf")
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            filepath.write_bytes(resp.content)
+
+def create_quali_classification():
+    fn = f"data/quali_classification.pdf"
 
     pdf = pdfplumber.open(fn)
     page = pdf.pages[0]
 
     tables = page.extract_tables()
 
-    file = Path(f"csv/{year}_{round}_quali_classification.csv")
+    file = Path(f"csv/quali_classification.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     # Remove 4th and 5th element of each row
@@ -109,9 +151,9 @@ def create_quali_classification(key: str, year: int, round: int):
     print("----- CSV file created for quali classification -----")
     return
 
-def create_sprint_lap_analysis(key: str, year: int, round: int):
-    fn_lap_analysis = f"data/{key}_sprint_analysis.pdf"
-    fn_lap_chart = f"data/{key}_sprint_lap_chart.pdf"
+def create_sprint_lap_analysis():
+    fn_lap_analysis = f"data/sprint_analysis.pdf"
+    fn_lap_chart = f"data/sprint_lap_chart.pdf"
 
     lap_analysis_options = {
         "intersection_x_tolerance": 10,
@@ -172,23 +214,30 @@ def create_sprint_lap_analysis(key: str, year: int, round: int):
             lap_number = list(lap_analysis[driver].keys())
             lap_analysis[driver] = [(lap_analysis[driver][str(lap)], lap_chart[lap - 1].index(driver) + 1) for lap in range(1, len(lap_number) + 1)]
 
-    file = Path(f"csv/{year}_{round}_sprint_laps_analysis.csv")
+    file = Path(f"csv/sprint_laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
     for driver in lap_analysis:
         for i in range(len(lap_analysis[driver])):
             lap = lap_analysis[driver][i]
-            milliseconds = int(lap[0].split(":")[0]) * 60000 + int(lap[0].split(":")[1]) * 1000 + int(lap[0].split(":")[2].split(".")[0]) * 10
+            mm_ss = lap[0].split(":")
+
+            if len(mm_ss) != 2:
+                continue
+
+            seconds = mm_ss[1].split(".")[0]
+            mmm = mm_ss[1].split(".")[1]
+            milliseconds = int(mm_ss[0]) * 60000 + int(seconds) * 1000 + int(mmm)
             text += f"{i + 1},{driver},{lap[0]},{lap[1]},{milliseconds}\n"
 
     file.write_text(text)
     print("----- CSV file created for sprint laps analysis -----")
     return
 
-def create_sprint_result(key: str, year: int, round: int):
-    fn_race_results = f"data/{key}_sprint_classification.pdf"
-    fn_lap_chart = f"data/{key}_sprint_lap_chart.pdf"
+def create_sprint_result():
+    fn_race_results = f"data/sprint_classification.pdf"
+    fn_lap_chart = f"data/sprint_lap_chart.pdf"
 
     pdf_lap_chart = pdfplumber.open(fn_lap_chart)
     grid_start = [t for t in pdf_lap_chart.pages[0].extract_text().split("\n") if t.startswith("GRID")][0].split(" ")[1:]
@@ -257,10 +306,10 @@ def create_sprint_result(key: str, year: int, round: int):
         constructor_text += f"{constructor},{constructor_result[constructor]}\n"
 
 
-    driver_file = Path(f"csv/{year}_{round}_driver_sprint_result.csv")
+    driver_file = Path(f"csv/driver_sprint_result.csv")
     driver_file.parent.mkdir(parents=True, exist_ok=True)
 
-    constructor_file = Path(f"csv/{year}_{round}_constructor_sprint_result.csv")
+    constructor_file = Path(f"csv/constructor_sprint_result.csv")
     constructor_file.parent.mkdir(parents=True, exist_ok=True)
 
     driver_file.write_text(text)
@@ -268,9 +317,9 @@ def create_sprint_result(key: str, year: int, round: int):
     print("----- CSV file created for sprint result -----")
     return
 
-def create_race_lap_analysis(key: str, year: int, round: int):
-    fn_lap_analysis = f"data/{key}_race_analysis.pdf"
-    fn_lap_chart = f"data/{key}_race_lap_chart.pdf"
+def create_race_lap_analysis():
+    fn_lap_analysis = f"data/race_analysis.pdf"
+    fn_lap_chart = f"data/race_lap_chart.pdf"
 
     lap_analysis_options = {
         "intersection_x_tolerance": 10,
@@ -331,22 +380,29 @@ def create_race_lap_analysis(key: str, year: int, round: int):
             lap_number = list(lap_analysis[driver].keys())
             lap_analysis[driver] = [(lap_analysis[driver][str(lap)], lap_chart[lap - 1].index(driver) + 1) for lap in range(1, len(lap_number) + 1)]
 
-    file = Path(f"csv/{year}_{round}_laps_analysis.csv")
+    file = Path(f"csv/laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
     for driver in lap_analysis:
         for i in range(len(lap_analysis[driver])):
             lap = lap_analysis[driver][i]
-            milliseconds = int(lap[0].split(":")[0]) * 60000 + int(lap[0].split(":")[1]) * 1000 + int(lap[0].split(":")[2].split(".")[0]) * 10
+            mm_ss = lap[0].split(":")
+
+            if len(mm_ss) != 2:
+                continue
+
+            seconds = mm_ss[1].split(".")[0]
+            mmm = mm_ss[1].split(".")[1]
+            milliseconds = int(mm_ss[0]) * 60000 + int(seconds) * 1000 + int(mmm)
             text += f"{i + 1},{driver},{lap[0]},{lap[1]},{milliseconds}\n"
 
     file.write_text(text)
     print("----- CSV file created for laps analysis -----")
     return
-def create_race_result(key: str, year: int, round: int):
-    fn_race_results = f"data/{key}_race_classification.pdf"
-    fn_lap_chart = f"data/{key}_race_lap_chart.pdf"
+def create_race_result():
+    fn_race_results = f"data/race_classification.pdf"
+    fn_lap_chart = f"data/race_lap_chart.pdf"
 
     pdf_lap_chart = pdfplumber.open(fn_lap_chart)
     grid_start = [t for t in pdf_lap_chart.pages[0].extract_text().split("\n") if t.startswith("GRID")][0].split(" ")[1:]
@@ -415,10 +471,10 @@ def create_race_result(key: str, year: int, round: int):
         constructor_text += f"{constructor},{constructor_result[constructor]}\n"
 
 
-    driver_file = Path(f"csv/{year}_{round}_driver_race_result.csv")
+    driver_file = Path(f"csv/driver_race_result.csv")
     driver_file.parent.mkdir(parents=True, exist_ok=True)
 
-    constructor_file = Path(f"csv/{year}_{round}_constructor_race_result.csv")
+    constructor_file = Path(f"csv/constructor_race_result.csv")
     constructor_file.parent.mkdir(parents=True, exist_ok=True)
 
     driver_file.write_text(text)
@@ -426,8 +482,8 @@ def create_race_result(key: str, year: int, round: int):
     print("----- CSV file created for race result -----")
     return
 
-def create_drivers_championship(key: str, year: int, round: int):
-    fn = f"data/{key}_drivers_championship.pdf"
+def create_drivers_championship():
+    fn = f"data/drivers_championship.pdf"
 
     pdf = pdfplumber.open(fn)
 
@@ -441,15 +497,15 @@ def create_drivers_championship(key: str, year: int, round: int):
             text += ",".join([row[1], row[2], row[0], str(wins)]) + "\n"
 
 
-    file = Path(f"csv/{year}_{round}_drivers_championship.csv")
+    file = Path(f"csv/drivers_championship.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     file.write_text(text)
     print("----- CSV file created for drivers championship -----")
     return
 
-def create_constructors_championship(key: str, year: int, round: int):
-    fn = f"data/{key}_constructors_championship.pdf"
+def create_constructors_championship():
+    fn = f"data/constructors_championship.pdf"
 
     pdf = pdfplumber.open(fn)
 
@@ -464,15 +520,15 @@ def create_constructors_championship(key: str, year: int, round: int):
             text += ",".join([constructor, row[2], row[0], str(wins)]) + "\n"
 
 
-    file = Path(f"csv/{year}_{round}_constructors_championship.csv")
+    file = Path(f"csv/constructors_championship.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     file.write_text(text)
     print("----- CSV file created for constructors championship -----")
     return
 
-def create_pit_stops(key: str, year: int, round: int):
-    fn = f"data/{key}_race_pit_stops.pdf"
+def create_pit_stops():
+    fn = f"data/race_pit_stops.pdf"
 
     pdf = pdfplumber.open(fn)
 
@@ -485,55 +541,57 @@ def create_pit_stops(key: str, year: int, round: int):
             milliseconds = row[6].split(".")[0] * 1000 + row[6].split(".")[1]
             text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6], str(milliseconds)]) + "\n"
 
-    file = Path(f"csv/{year}_{round}_pit_stops.csv")
+    file = Path(f"csv/race_pit_stops.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     file.write_text(text)
     print("----- CSV file created for pit stops -----")
     return
 
+
+def snake_case(s: str) -> str:
+    return '_'.join(
+        sub('([A-Z][a-z]+)', r' \1',
+        sub('([A-Z]+)', r' \1',
+        s.replace('-', ' '))).split()).lower()
+
+def kebab_case(s: str) -> str:
+  return '-'.join(
+    sub(r"(\s|_|-)+"," ",
+    sub(r"[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+",
+    lambda mo: ' ' + mo.group(0).lower(), s)).split())
+
+
 if __name__ == "__main__":
     # Get round number and circuit contry from stdin arguments
-    round = int(sys.argv[1])
-    country = sys.argv[2]
+    race_name = sys.argv[1]
+
+    # Transform race name to kebab case and snake case
+    snake_race_name = snake_case(race_name)
+    kebab_race_name = kebab_case(race_name)
+
     today = date.today()
-    is_sprint = sys.argv[3] == "true"
+    is_sprint = sys.argv[2] == "true"
 
     # Load contries.json file
     file = open("countries.json", "r")
     countries = json.load(file)
 
-    # Find the country in the countries.json list
-    code = None
-    for c in countries:
-        if c["name"] == country:
-            # Lowercase the country code
-            code = c["code"].lower()
-            break
-
-    # If the country is not found, exit
-    if code is None:
-        print("Country not found")
-        exit(3)
-
-    print("Country found: " + code)
-
     try :
-        key = download_files(today.year, round, code)
+        key = snake_race_name
+        download_files(today.year, kebab_race_name, is_sprint)
+
+        create_quali_classification()
+        create_race_lap_analysis()
+        create_race_result()
+        create_drivers_championship()
+        create_constructors_championship()
+        create_pit_stops()
 
         if is_sprint:
-            download_sprint_files(key)
-
-        create_quali_classification(key, today.year, round)
-        create_race_lap_analysis(key, today.year, round)
-        create_race_result(key, today.year, round)
-        create_drivers_championship(key, today.year, round)
-        create_constructors_championship(key, today.year, round)
-        create_pit_stops(key, today.year, round)
-
-        if is_sprint:
-            create_sprint_lap_analysis(key, today.year, round)
-            create_sprint_result(key, today.year, round)
+            print("Handling sprint weekend")
+            # create_sprint_lap_analysis()
+            # create_sprint_result()
     except Exception as e:
         print(e)
         exit(1)
