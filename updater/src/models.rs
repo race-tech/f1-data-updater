@@ -50,6 +50,26 @@ pub struct DriverRaceResult {
 }
 
 #[derive(Deserialize)]
+pub struct DriverSprintResult {
+    pub no: u16,
+    pub entrant: String,
+    pub grid: u16,
+    pub position: u16,
+    #[serde(rename = "positionOrder")]
+    pub position_order: u16,
+    pub points: u16,
+    pub laps: u16,
+    pub time: String,
+    pub milliseconds: String,
+    #[serde(rename = "fastestLap")]
+    pub fastest_lap: u16,
+    #[serde(rename = "fastestLapTime")]
+    pub fatest_lap_time: String,
+    #[serde(rename = "fastestLapSpeed")]
+    pub fastest_lap_speed: f32,
+}
+
+#[derive(Deserialize)]
 pub struct ConstructorRaceResult {
     pub constructor: String,
     pub points: u16,

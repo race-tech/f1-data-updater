@@ -11,7 +11,7 @@ use tables::*;
 
 fn main() -> anyhow::Result<()> {
     let round = env::args().nth(1).unwrap().parse::<u16>()?;
-    let _is_sprint = env::args().nth(2).unwrap().parse::<bool>()?;
+    let is_sprint = env::args().nth(2).unwrap().parse::<bool>()?;
     let year = chrono::Utc::now().year();
 
     let url = "mysql://root:password@localhost:13306/f1db";
@@ -32,9 +32,16 @@ fn main() -> anyhow::Result<()> {
     pit_stops(race_id, &mut tx)?;
     qualifying_results(race_id, &mut tx)?;
     driver_results(race_id, &mut tx)?;
-    constructor_results(race_id, &mut tx)?;
     driver_championship(race_id, &mut tx)?;
     constructor_championship(race_id, &mut tx)?;
+
+    if !is_sprint {
+        constructor_results(race_id, &mut tx)?;
+    } else {
+        constructor_sprint_results(race_id, &mut tx)?;
+        sprint_lap_times(race_id, &mut tx)?;
+        driver_sprint_results(race_id, &mut tx)?;
+    }
 
     tx.commit()?;
 
@@ -372,6 +379,166 @@ fn constructor_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Resul
                 cc.position.into(),
                 cc.wins.into(),
             ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn sprint_lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/sprint_laps_analysis.csv";
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::LapAnalysis>() {
+        let la = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", la.driver),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+
+        let q = Query::insert()
+            .into_table(LapTimes::Table)
+            .columns([
+                LapTimes::RaceID,
+                LapTimes::DriverID,
+                LapTimes::Lap,
+                LapTimes::Position,
+                LapTimes::Time,
+                LapTimes::Milliseconds,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                la.lap.into(),
+                la.position.into(),
+                la.time.into(),
+                la.milliseconds.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/driver_sprint_result.csv";
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    for r in rdr.deserialize::<models::DriverSprintResult>() {
+        let dsr = r?;
+
+        let driver_id = *tx
+            .query_map(
+                format!("SELECT driverId FROM drivers WHERE code = {}", dsr.no),
+                |driver_id: i32| driver_id,
+            )?
+            .first()
+            .expect("driver not found");
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    dsr.entrant
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        // TODO: Handle status
+
+        let q = Query::insert()
+            .into_table(SprintResults::Table)
+            .columns([
+                SprintResults::RaceID,
+                SprintResults::DriverID,
+                SprintResults::ConstructorID,
+                SprintResults::Number,
+                SprintResults::Grid,
+                SprintResults::Position,
+                SprintResults::PositionText,
+                SprintResults::PositionOrder,
+                SprintResults::Points,
+                SprintResults::Laps,
+                SprintResults::Time,
+                SprintResults::Milliseconds,
+                SprintResults::FastestLap,
+                SprintResults::FastestLapTime,
+                SprintResults::FastestLapSpeed,
+            ])
+            .values([
+                race_id.into(),
+                driver_id.into(),
+                constructor_id.into(),
+                dsr.no.into(),
+                dsr.grid.into(),
+                dsr.position.into(),
+                dsr.position.into(),
+                dsr.position_order.into(),
+                dsr.points.into(),
+                dsr.laps.into(),
+                dsr.time.into(),
+                dsr.milliseconds.into(),
+                dsr.fastest_lap.into(),
+                dsr.fatest_lap_time.into(),
+                dsr.fastest_lap_speed.into(),
+            ])?
+            .to_string(MysqlQueryBuilder);
+
+        tx.exec_drop(q, ())?;
+    }
+
+    Ok(())
+}
+
+fn constructor_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
+    let file = "/etc/csv/constructor_race_result.csv";
+    let mut rdr = csv::Reader::from_path(file)?;
+
+    let driver_sprint_file = "/etc/csv/driver_sprint_result.csv";
+    let mut driver_sprint_rdr = csv::Reader::from_path(driver_sprint_file)?;
+
+    let drivers = driver_sprint_rdr
+        .deserialize::<models::DriverSprintResult>()
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for r in rdr.deserialize::<models::ConstructorRaceResult>() {
+        let crr = r?;
+
+        let sprint_points = drivers
+            .iter()
+            .filter(|d| d.entrant == crr.constructor)
+            .map(|d| d.points)
+            .sum::<u16>()
+            + crr.points;
+
+        let constructor_id = *tx
+            .query_map(
+                format!(
+                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    crr.constructor
+                ),
+                |constructor_id: i32| constructor_id,
+            )?
+            .first()
+            .expect("constructor not found");
+
+        let q = Query::insert()
+            .into_table(ConstructorResults::Table)
+            .columns([
+                ConstructorResults::RaceID,
+                ConstructorResults::ConstructorID,
+                ConstructorResults::Points,
+            ])
+            .values([race_id.into(), constructor_id.into(), sprint_points.into()])?
             .to_string(MysqlQueryBuilder);
 
         tx.exec_drop(q, ())?;

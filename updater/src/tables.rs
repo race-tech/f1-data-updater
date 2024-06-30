@@ -3,8 +3,6 @@ use sea_query::Iden;
 #[derive(Iden)]
 pub enum ConstructorResults {
     Table,
-    #[iden = "constructorResultId"]
-    ID,
     #[iden = "raceId"]
     RaceID,
     #[iden = "constructorId"]
@@ -16,8 +14,6 @@ pub enum ConstructorResults {
 #[derive(Iden)]
 pub enum ConstructorStandings {
     Table,
-    #[iden = "constructorStandingId"]
-    ID,
     #[iden = "raceId"]
     RaceID,
     #[iden = "constructorId"]
@@ -32,8 +28,6 @@ pub enum ConstructorStandings {
 #[derive(Iden)]
 pub enum DriverStandings {
     Table,
-    #[iden = "driverStandingId"]
-    ID,
     #[iden = "raceId"]
     RaceID,
     #[iden = "driverId"]
@@ -75,8 +69,6 @@ pub enum PitStops {
 #[derive(Iden)]
 pub enum Qualifying {
     Table,
-    #[iden = "qualifyId"]
-    QualifyID,
     #[iden = "raceId"]
     RaceID,
     #[iden = "driverId"]
@@ -93,8 +85,6 @@ pub enum Qualifying {
 #[derive(Iden)]
 pub enum Results {
     Table,
-    #[iden = "resultId"]
-    ResultID,
     #[iden = "raceId"]
     RaceID,
     #[iden = "driverId"]
@@ -115,6 +105,36 @@ pub enum Results {
     #[iden = "fastestLap"]
     FastestLap,
     Rank,
+    #[iden = "fastestLapTime"]
+    FastestLapTime,
+    #[iden = "fastestLapSpeed"]
+    FastestLapSpeed,
+    #[iden = "statusId"]
+    StatusID,
+}
+
+#[derive(Iden)]
+pub enum SprintResults {
+    Table,
+    #[iden = "raceId"]
+    RaceID,
+    #[iden = "driverId"]
+    DriverID,
+    #[iden = "constructorId"]
+    ConstructorID,
+    Number,
+    Grid,
+    Position,
+    #[iden = "positionText"]
+    PositionText,
+    #[iden = "positionOrder"]
+    PositionOrder,
+    Points,
+    Laps,
+    Time,
+    Milliseconds,
+    #[iden = "fastestLap"]
+    FastestLap,
     #[iden = "fastestLapTime"]
     FastestLapTime,
     #[iden = "fastestLapSpeed"]
