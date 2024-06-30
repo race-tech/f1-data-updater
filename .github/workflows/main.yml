@@ -96,6 +96,12 @@ jobs:
           echo ${{ needs.setup.outputs.race_id }}
           echo ${{ needs.setup.outputs.is_sprint }}
 
+      - name: Create sql dump
+        run: |
+          export MYSQL_PWD=password
+          mysqldump --host 127.0.0.1 --port 13306 -uroot f1db > f1db.sql
+          gzip f1db.sql
+
       - name: Upload sql dump
         uses: actions/upload-artifact@v4
         with:
