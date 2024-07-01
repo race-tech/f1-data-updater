@@ -16,6 +16,7 @@ endpoint = "https://www.fia.com/events/fia-formula-one-world-championship"
 titles = {
     "RACE": {
         "Race Provisional Classification": "race_classification",
+        "Classification": "race_classification",
         "Provisional Race Classification": "race_classification",
         "Race Lap Analysis": "race_analysis",
         "Race Lap Chart": "race_lap_chart",
