@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY converter/main.py .
 
-RUN python3 main.py $ROUND_NAME $IS_SPRINT
+RUN python3 main.py "$ROUND_NAME" $IS_SPRINT
 
 FROM rust:alpine3.19 AS chef
 
