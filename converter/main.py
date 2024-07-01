@@ -34,8 +34,11 @@ titles = {
     },
     "SPRINT RACE": {
         "Sprint Provisional Classification": "sprint_classification",
+        "Provisional Classification": "sprint_classification",
         "Sprint Lap Analysis": "sprint_analysis",
-        "Sprint Lap Chart": "sprint_lap_chart"
+        "Lap Analysis": "sprint_analysis",
+        "Sprint Lap Chart": "sprint_lap_chart",
+        "Lap Chart": "sprint_lap_chart"
     }
 }
 
