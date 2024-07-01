@@ -47,11 +47,10 @@ jobs:
         shell: bash
         run: |
           export MYSQL_PWD=password
-          params=$(echo "SELECT r.raceId, r.round, r.name, r.sprint_date FROM races AS r WHERE r.date < '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
-          round=$(echo $params | tr ' ' '\n' | head -2 | tail -1)
-          race_id=$(echo $params | tr ' ' '\n' | head -2 | head -1)
-          race_name=$(echo $params | tr ' ' '\n' | tail -2 | head -1)
-          sprint_race_date=$(echo $params | tr ' ' '\n' | tail -2 | tail -1)
+          race_id=$(echo "SELECT r.raceId FROM races AS r WHERE r.date < '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
+          round=$(echo "SELECT r.round FROM races AS r WHERE r.date < '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
+          race_name=$(echo "SELECT r.name FROM races AS r WHERE r.date < '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
+          sprint_race_date=$(echo "SELECT r.sprint_date FROM races AS r WHERE r.date < '$(date +'%Y-%m-%d')' ORDER BY r.date DESC LIMIT 1" | mysql -h 127.0.0.1 -P 13306 --protocol=tcp -u root -D f1db | tail -1 | xargs)
           should_update=$([ $(echo "SELECT resultId FROM results WHERE raceId = $race_id" | mysql -h 127.0.0.1 -P 13306 --protocol=TCP -u root -D f1db | wc -l) -ge 1 ] && echo 'false' || echo 'true')
           is_sprint=$([[ $sprint_race_date -eq "NULL" ]]) && echo 'false' || echo 'true'
           echo "round=$round" >> $GITHUB_OUTPUT
