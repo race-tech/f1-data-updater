@@ -105,7 +105,7 @@ jobs:
           build-args: |
             ROUND_NUMBER=${{ needs.setup.outputs.round }}
             ROUND_NAME=${{ needs.setup.outputs.race_name }}
-            IS_RACE_SPRINT=${{ needs.setup.outputs.is_sprint }}
+            IS_SPRINT=${{ needs.setup.outputs.is_sprint }}
 
       - name: Run updater
         uses: addnab/docker-run-action@v3
