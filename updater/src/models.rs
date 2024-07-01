@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct LapAnalysis {
     pub lap: u16,
     pub driver: u16,
@@ -9,7 +9,7 @@ pub struct LapAnalysis {
     pub milliseconds: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct QualificationOrder {
     pub pos: u16,
     pub no: u16,
@@ -28,7 +28,7 @@ pub struct QualificationOrder {
     pub q3_time: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct DriverRaceResult {
     pub no: u16,
     pub entrant: String,
@@ -49,7 +49,7 @@ pub struct DriverRaceResult {
     pub fastest_lap_speed: f32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct DriverSprintResult {
     pub no: u16,
     pub entrant: String,
@@ -69,13 +69,13 @@ pub struct DriverSprintResult {
     pub fastest_lap_speed: f32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct ConstructorRaceResult {
     pub constructor: String,
     pub points: u16,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct DriverChampionship {
     pub driver: String,
     pub points: u32,
@@ -83,7 +83,7 @@ pub struct DriverChampionship {
     pub wins: u32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct ConstructorChampionship {
     pub constructor: String,
     pub points: u32,
@@ -91,7 +91,7 @@ pub struct ConstructorChampionship {
     pub wins: u32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct PitStop {
     pub no: u16,
     pub driver: String,

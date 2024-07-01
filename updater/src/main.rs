@@ -7,9 +7,12 @@ use sea_query::{MysqlQueryBuilder, Query};
 mod models;
 mod tables;
 
+use simple_logger::SimpleLogger;
 use tables::*;
 
 fn main() -> anyhow::Result<()> {
+    SimpleLogger::new().init()?;
+
     let round = env::args().nth(1).unwrap().parse::<u16>()?;
     let is_sprint = env::args().nth(2).unwrap().parse::<bool>()?;
     let year = chrono::Utc::now().year();
@@ -44,6 +47,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     tx.commit()?;
+    log::info!("transaction committed");
 
     Ok(())
 }
@@ -54,6 +58,7 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
     for r in rdr.deserialize::<models::LapAnalysis>() {
         let la = r?;
+        log::info!("inserting lap analysis: {:?}", la);
 
         let driver_id = *tx
             .query_map(
@@ -86,6 +91,7 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("lap_times inserted");
     Ok(())
 }
 
@@ -95,6 +101,7 @@ fn pit_stops(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
     for r in rdr.deserialize::<models::PitStop>() {
         let ps = r?;
+        log::info!("inserting pit stop: {:?}", ps);
 
         let driver_id = *tx
             .query_map(
@@ -129,6 +136,7 @@ fn pit_stops(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("pit_stops inserted");
     Ok(())
 }
 
@@ -138,6 +146,7 @@ fn qualifying_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> 
 
     for r in rdr.deserialize::<models::QualificationOrder>() {
         let qo = r?;
+        log::info!("qualification order: {:?}", qo);
 
         let driver_id = *tx
             .query_map(
@@ -186,6 +195,7 @@ fn qualifying_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> 
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("qualifying_results inserted");
     Ok(())
 }
 
@@ -195,6 +205,7 @@ fn driver_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
     for r in rdr.deserialize::<models::DriverRaceResult>() {
         let drr = r?;
+        log::info!("inserting driver race result: {:?}", drr);
 
         let driver_id = *tx
             .query_map(
@@ -259,6 +270,7 @@ fn driver_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("driver race results inserted");
     Ok(())
 }
 
@@ -268,6 +280,7 @@ fn constructor_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
 
     for r in rdr.deserialize::<models::ConstructorRaceResult>() {
         let crr = r?;
+        log::info!("inserting constructor result: {:?}", crr);
 
         let constructor_id = *tx
             .query_map(
@@ -293,6 +306,7 @@ fn constructor_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("constructor race results inserted");
     Ok(())
 }
 
@@ -302,6 +316,8 @@ fn driver_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
 
     for r in rdr.deserialize::<models::DriverChampionship>() {
         let dd = r?;
+        log::info!("inserting driver championship: {:?}", dd);
+
         let surname = dd
             .driver
             .split_once(' ')
@@ -340,6 +356,7 @@ fn driver_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("driver championship inserted");
     Ok(())
 }
 
@@ -349,6 +366,7 @@ fn constructor_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Resul
 
     for r in rdr.deserialize::<models::ConstructorChampionship>() {
         let cc = r?;
+        log::info!("inserting constructor championship: {:?}", cc);
 
         let constructor_id = *tx
             .query_map(
@@ -384,6 +402,7 @@ fn constructor_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Resul
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("constructor championship inserted");
     Ok(())
 }
 
@@ -393,6 +412,7 @@ fn sprint_lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
     for r in rdr.deserialize::<models::LapAnalysis>() {
         let la = r?;
+        log::info!("inserting sprint lap time: {:?}", la);
 
         let driver_id = *tx
             .query_map(
@@ -425,6 +445,7 @@ fn sprint_lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("sprint lap times inserted");
     Ok(())
 }
 
@@ -434,6 +455,7 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
 
     for r in rdr.deserialize::<models::DriverSprintResult>() {
         let dsr = r?;
+        log::info!("inserting driver sprint result: {:?}", dsr);
 
         let driver_id = *tx
             .query_map(
@@ -496,6 +518,7 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("driver sprint results inserted");
     Ok(())
 }
 
@@ -512,6 +535,7 @@ fn constructor_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Res
 
     for r in rdr.deserialize::<models::ConstructorRaceResult>() {
         let crr = r?;
+        log::info!("inserting constructor sprint result: {:?}", crr);
 
         let sprint_points = drivers
             .iter()
@@ -544,5 +568,6 @@ fn constructor_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Res
         tx.exec_drop(q, ())?;
     }
 
+    log::info!("constructor sprint result inserted");
     Ok(())
 }
