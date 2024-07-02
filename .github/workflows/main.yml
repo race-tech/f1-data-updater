@@ -111,6 +111,7 @@ jobs:
         with:
           image: f1db-updater
           run: cargo run --release -- ${{ needs.setup.outputs.round }} ${{ needs.setup.outputs.is_sprint }}
+          docker_network: host
 
       - name: Create sql dump
         run: |
