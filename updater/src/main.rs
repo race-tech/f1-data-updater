@@ -13,6 +13,7 @@ use tables::*;
 fn main() -> anyhow::Result<()> {
     SimpleLogger::new().init()?;
 
+    log::info!("starting with args: {:?}", env::args());
     let round = env::args().nth(1).unwrap().parse::<u16>()?;
     let is_sprint = env::args().nth(2).unwrap().parse::<bool>()?;
     let year = chrono::Utc::now().year();

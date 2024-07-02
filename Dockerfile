@@ -18,6 +18,7 @@ RUN python3 main.py "$ROUND_NAME" $IS_SPRINT
 FROM rust:1.79-slim-bullseye AS runtime
 
 RUN apt-get update && apt-get install -y libssl-dev
+RUN apt update && apt install -y pkg-config
 
 LABEL maintainer="Thibault C. <thibault.chene23@gmail.com>"
 
@@ -27,4 +28,4 @@ COPY --from=converter /app/csv /etc/csv
 COPY updater/Cargo.toml .
 COPY updater/src src
 
-CMD ["sh", "-c", "cargo run --release -- $ROUND_NUMBER $IS_SPRINT"]
+RUN cargo build --release
