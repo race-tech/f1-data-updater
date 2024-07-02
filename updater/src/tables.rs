@@ -2,6 +2,7 @@ use sea_query::Iden;
 
 #[derive(Iden)]
 pub enum ConstructorResults {
+    #[iden = "constructorResults"]
     Table,
     #[iden = "raceId"]
     RaceID,
@@ -13,6 +14,7 @@ pub enum ConstructorResults {
 
 #[derive(Iden)]
 pub enum ConstructorStandings {
+    #[iden = "constructorStandings"]
     Table,
     #[iden = "raceId"]
     RaceID,
@@ -27,6 +29,7 @@ pub enum ConstructorStandings {
 
 #[derive(Iden)]
 pub enum DriverStandings {
+    #[iden = "driverStandings"]
     Table,
     #[iden = "raceId"]
     RaceID,
@@ -41,6 +44,7 @@ pub enum DriverStandings {
 
 #[derive(Iden)]
 pub enum LapTimes {
+    #[iden = "lapTimes"]
     Table,
     #[iden = "raceId"]
     RaceID,
@@ -54,6 +58,7 @@ pub enum LapTimes {
 
 #[derive(Iden)]
 pub enum PitStops {
+    #[iden = "pitStops"]
     Table,
     #[iden = "raceId"]
     RaceID,
@@ -115,6 +120,7 @@ pub enum Results {
 
 #[derive(Iden)]
 pub enum SprintResults {
+    #[iden = "sprintResults"]
     Table,
     #[iden = "raceId"]
     RaceID,
