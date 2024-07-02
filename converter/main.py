@@ -15,30 +15,40 @@ endpoint = "https://www.fia.com/events/fia-formula-one-world-championship"
 
 titles = {
     "RACE": {
-        "Race Provisional Classification": "race_classification",
-        "Classification": "race_classification",
-        "Provisional Race Classification": "race_classification",
-        "Race Lap Analysis": "race_analysis",
-        "Race Lap Chart": "race_lap_chart",
-        "Lap Analysis": "race_analysis",
-        "Lap Chart": "race_lap_chart",
-        "Drivers Championship": "drivers_championship",
-        "Constructors Championship": "constructors_championship",
-        "Drivers' Championship ": "drivers_championship",
-        "Drivers' Championship  Constructors Championship": "constructors_championship",
-        "Race Pit Stop Summary": "race_pit_stops",
-        "Pit Stop Summary": "race_pit_stops",
+        "race_classification": [
+            "Race Provisional Classification",
+            "Classification",
+            "Provisional Race Classification"
+        ],
+        "race_lap_chart": [
+            "Race Lap Chart",
+            "Lap Chart"
+        ],
+        "drivers_championship": [
+            "Drivers Championship",
+            "Drivers' Championship"
+        ],
+        "constructors_championship": [
+            "Constructors Championship",
+            "Drivers' Championship  Constructors Championship"
+        ],
+        "race_pit_stops": [
+            "Race Pit Stop Summary",
+            "Pit Stop Summary"
+        ],
+        "race_history_chart": [
+            "History Chart"
+        ]
     },
     "QUALIFYING": {
-        "Provisional Classification": "quali_classification"
+        "quali_classification": ["Provisional Classification"]
     },
     "SPRINT RACE": {
-        "Sprint Provisional Classification": "sprint_classification",
-        "Provisional Classification": "sprint_classification",
-        "Sprint Lap Analysis": "sprint_analysis",
-        "Lap Analysis": "sprint_analysis",
-        "Sprint Lap Chart": "sprint_lap_chart",
-        "Lap Chart": "sprint_lap_chart"
+        "sprint_classification": ["Provisional Classification", "Sprint Provisional Classification"],
+        "sprint_lap_chart": ["Sprint Lap Chart", "Lap Chart"],
+        "sprint_history_chart": [
+            "History Chart"
+        ]
     }
 }
 
@@ -126,12 +136,18 @@ def download_files(year: int, race_name: str, is_sprint: bool):
 
     for header in files_url:
         for files in files_url[header]:
-            if not files[0] in titles[header]:
+            fn = None
+
+            for f in titles[header]:
+                if files[0] in titles[header][f]:
+                    fn = f
+                    break
+
+            if fn is None:
                 print(f"Skipping: {files[0]}")
                 continue
 
             dl_url = base + files[1]
-            fn = titles[header][files[0]]
 
             print(f"Downloading: {dl_url} to {fn}.pdf")
 
@@ -170,73 +186,33 @@ def create_quali_classification():
     return
 
 def create_sprint_lap_analysis():
-    fn_lap_analysis = f"data/sprint_analysis.pdf"
-    fn_lap_chart = f"data/sprint_lap_chart.pdf"
+    fn_lap_analysis = f"data/sprint_history_chart.pdf"
 
     lap_analysis_options = {}
 
     pdf_lap_analysis = pdfplumber.open(fn_lap_analysis)
-    pdf_lap_chart = pdfplumber.open(fn_lap_chart)
 
-    # This is a dict of list containing the lap times for each driver
-    lap_analysis = {}
-    lap_chart = []
+    laps = []
+    lap = 1
 
-    for p in range(len(pdf_lap_chart.pages)):
-        text = pdf_lap_chart.pages[p].extract_text().split("\n")
-        text = [t for t in text if t.startswith("LAP")]
-
-        for lap in text:
-            lap = lap.split(" ")[2:]
-            lap_chart.append(lap)
-
-    for p in range(len(pdf_lap_analysis.pages)):
-        page = pdf_lap_analysis.pages[p]
-        tables = page.extract_tables(lap_analysis_options)
-        texts = page.extract_text().split("\n")
-        drivers = []
-
-        for i in range(len(texts)):
-            if texts[i].startswith("LAP TIME"):
-                l = texts[i - 1].split(" ")
-                for j in range(0, len(l), 3):
-                    drivers.append([l[j], l[j + 1] + " " + l[j + 2]])
-
-        for i in range(0, len(tables), 2):
-            driver_id = i // 2
-
-            for row in tables[i] + tables[i + 1]:
-                if len(row) == 0 or row[0] == '':
-                    continue
-
-                if not drivers[driver_id][0] in lap_analysis:
-                    lap_analysis[drivers[driver_id][0]] = {}
-
-                lap_analysis[drivers[driver_id][0]][row[0]] = row[2]
-
-        for driver in lap_analysis:
-            if not isinstance(lap_analysis[driver], dict):
-                continue
-
-            lap_number = list(lap_analysis[driver].keys())
-            lap_analysis[driver] = [(lap_analysis[driver][str(lap)], lap_chart[lap - 1].index(driver) + 1) for lap in range(1, len(lap_number) + 1)]
+    for page in pdf_lap_analysis.pages:
+        tables = page.extract_tables()
+        for table in tables:
+            for j in range(len(table)):
+                row = table[j]
+                m = row[2].split(":")[0]
+                s = row[2].split(":")[1].split(".")[0]
+                ms = row[2].split(":")[1].split(".")[1]
+                mmm = int(m) * 60000 + int(s) * 1000 + int(ms)
+                laps.append([lap, row[0], row[2], j + 1, mmm])
+            lap += 1
 
     file = Path(f"csv/sprint_laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
-    for driver in lap_analysis:
-        for i in range(len(lap_analysis[driver])):
-            lap = lap_analysis[driver][i]
-            mm_ss = lap[0].split(":")
-
-            if len(mm_ss) != 2:
-                continue
-
-            seconds = mm_ss[1].split(".")[0]
-            mmm = mm_ss[1].split(".")[1]
-            milliseconds = int(mm_ss[0]) * 60000 + int(seconds) * 1000 + int(mmm)
-            text += f"{i + 1},{driver},{lap[0]},{lap[1]},{milliseconds}\n"
+    for lap in laps:
+        text += ",".join([str(lap[0]), lap[1], lap[2], str(lap[3]), str(lap[4])]) + "\n"
 
     file.write_text(text)
     print("----- CSV file created for sprint laps analysis -----")
@@ -340,84 +316,32 @@ def create_sprint_result():
     return
 
 def create_race_lap_analysis():
-    fn_lap_analysis = f"data/race_analysis.pdf"
-    fn_lap_chart = f"data/race_lap_chart.pdf"
+    fn_lap_analysis = f"data/race_history_chart.pdf"
 
-    lap_analysis_options = {
-        "intersection_x_tolerance": 10,
-        "horizontal_strategy": "text",
-        "intersection_y_tolerance": 25,
-    }
+    lap_analysis_options = {}
 
     pdf_lap_analysis = pdfplumber.open(fn_lap_analysis)
-    pdf_lap_chart = pdfplumber.open(fn_lap_chart)
 
-    # This is a dict of list containing the lap times for each driver
-    lap_analysis = {}
-    lap_chart = []
+    laps = []
 
-    for p in range(len(pdf_lap_chart.pages)):
-        text = pdf_lap_chart.pages[p].extract_text().split("\n")
-        text = [t for t in text if t.startswith("LAP")]
-
-        for lap in text:
-            lap = lap.split(" ")[2:]
-            lap_chart.append(lap)
-
-    for p in range(len(pdf_lap_analysis.pages)):
-        page = pdf_lap_analysis.pages[p]
-        tables = page.extract_tables(lap_analysis_options)
-        table = tables[0]
-        table = table[4:]
-
-        _drivers = table[0][0]
-        _drivers = _drivers.split(" ")
-        drivers = []
-        for i in range(0, len(_drivers), 3):
-            drivers.append([_drivers[i], _drivers[i + 1] + " " + _drivers[i + 2]])
-
-        table = table[4:]
-
-        for row in table:
-            not_empty = [r for r in row if r != '']
-            if len(not_empty) == 0:
-                # Handle the case where the row is empty
-                continue
-
-            for driver in range(len(drivers)):
-                r = row[driver * 7 + driver:driver * 7 + 7 + driver]
-
-                if not drivers[driver][0] in lap_analysis:
-                    lap_analysis[drivers[driver][0]] = {}
-
-                if r[0] != '' and r[0] != None:
-                    lap_analysis[drivers[driver][0]][r[0]] = r[2]
-                if r[4] != '' and r[4] != None:
-                    lap_analysis[drivers[driver][0]][r[4]] = r[6]
-
-        for driver in lap_analysis:
-            if not isinstance(lap_analysis[driver], dict):
-                continue
-
-            lap_number = list(lap_analysis[driver].keys())
-            lap_analysis[driver] = [(lap_analysis[driver][str(lap)], lap_chart[lap - 1].index(driver) + 1) for lap in range(1, len(lap_number) + 1)]
+    for page in pdf_lap_analysis.pages:
+        tables = page.extract_tables()
+        for i in range(len(tables)):
+            table = tables[i]
+            for j in range(len(table)):
+                row = table[j]
+                m = row[2].split(":")[0]
+                s = row[2].split(":")[1].split(".")[0]
+                ms = row[2].split(":")[1].split(".")[1]
+                mmm = int(m) * 60000 + int(s) * 1000 + int(ms)
+                laps.append([i + 1, row[0], row[2], j + 1, mmm])
 
     file = Path(f"csv/laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
 
     text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
-    for driver in lap_analysis:
-        for i in range(len(lap_analysis[driver])):
-            lap = lap_analysis[driver][i]
-            mm_ss = lap[0].split(":")
-
-            if len(mm_ss) != 2:
-                continue
-
-            seconds = mm_ss[1].split(".")[0]
-            mmm = mm_ss[1].split(".")[1]
-            milliseconds = int(mm_ss[0]) * 60000 + int(seconds) * 1000 + int(mmm)
-            text += f"{i + 1},{driver},{lap[0]},{lap[1]},{milliseconds}\n"
+    for lap in laps:
+        text += ",".join([str(lap[0]), lap[1], lap[2], str(lap[3]), str(lap[4])]) + "\n"
 
     file.write_text(text)
     print("----- CSV file created for laps analysis -----")
