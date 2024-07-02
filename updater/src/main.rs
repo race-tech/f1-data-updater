@@ -513,7 +513,6 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
                 SprintResults::Milliseconds,
                 SprintResults::FastestLap,
                 SprintResults::FastestLapTime,
-                SprintResults::FastestLapSpeed,
             ])
             .values([
                 race_id.into(),
@@ -530,7 +529,6 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
                 dsr.milliseconds.into(),
                 dsr.fastest_lap.into(),
                 dsr.fatest_lap_time.into(),
-                dsr.fastest_lap_speed.into(),
             ])?
             .to_string(MysqlQueryBuilder);
 
