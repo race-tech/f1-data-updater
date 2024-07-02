@@ -546,7 +546,15 @@ def create_pit_stops():
         table = pdf.pages[page].extract_tables()[0]
 
         for row in table:
-            milliseconds = row[6].split(".")[0] * 1000 + row[6].split(".")[1]
+            if len(row[6].split(":")) == 2:
+                m = int(row[6].split(":")[0])
+                s = int(row[6].split(":")[1].split(".")[0])
+                mmm = int(row[6].split(":")[1].split(".")[1])
+            else:
+                m = 0
+                s = int(row[6].split(":")[0].split(".")[0])
+                mmm = int(row[6].split(":")[0].split(".")[1])
+            milliseconds = m * 60000 + s * 1000 + mmm
             text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6], str(milliseconds)]) + "\n"
 
     file = Path(f"csv/race_pit_stops.csv")
