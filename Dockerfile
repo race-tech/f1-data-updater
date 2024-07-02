@@ -15,37 +15,16 @@ COPY converter/main.py .
 
 RUN python3 main.py "$ROUND_NAME" $IS_SPRINT
 
-FROM rust:alpine3.19 AS chef
+FROM rust:1.79-slim-bullseye AS runtime
 
-RUN apk add --no-cache musl-dev pkgconfig openssl-dev
-
-RUN cargo install cargo-chef
-
-WORKDIR /app
-RUN cargo new --bin updater
-WORKDIR /app/updater
-
-COPY updater/Cargo.toml .
-
-FROM chef AS planner
-
-RUN cargo chef prepare --recipe-path recipe.json
-
-FROM planner AS builder
-
-COPY --from=planner /app/updater/recipe.json recipe.json
-# Build dependencies - this is the caching Docker layer!
-RUN cargo chef cook --release --recipe-path recipe.json
-
-COPY updater/src src
-
-RUN cargo build --release
-
-FROM alpine:3.19 AS runtime
+RUN apt-get update && apt-get install -y libssl-dev
 
 LABEL maintainer="Thibault C. <thibault.chene23@gmail.com>"
 
-COPY --from=builder /app/updater/target/release/updater /usr/local/bin
+WORKDIR /updater
 COPY --from=converter /app/csv /etc/csv
 
-ENTRYPOINT ["/usr/local/bin/updater", $ROUND_NUMBER, $IS_SPRINT]
+COPY updater/Cargo.toml .
+COPY updater/src src
+
+CMD ["sh", "-c", "cargo run --release -- $ROUND_NUMBER $IS_SPRINT"]
