@@ -42,6 +42,19 @@ titles = {
     }
 }
 
+entrant_mapping = {
+    "Oracle Red Bull Racing": "Red Bull",
+    "McLaren Formula 1 Team": "McLaren",
+    "Mercedes-AMG PETRONAS F1 Team": "Mercedes",
+    "Aston Martin Aramco F1 Team": "Aston Martin",
+    "Scuderia Ferrari": "Ferrari",
+    "Williams Racing": "Williams",
+    "BWT Alpine F1 Team": "Alpine F1 Team",
+    "MoneyGram Haas F1 Team": "Haas F1 Team",
+    "Visa Cash App RB F1 Team": "RB F1 Team",
+    "Stake F1 Team Kick Sauber": "Sauber",
+}
+
 def download_files(year: int, race_name: str, is_sprint: bool):
     # Format the key to the following format:
     # year_round_country
@@ -148,6 +161,7 @@ def create_quali_classification():
 
     text = ",".join(["pos", "no", "driver", "entrant", "q1", "q1_laps", "%", "q1_time", "q2", "q2_laps", "q2_time", "q3", "q3_laps", "q3_time"]) + "\n"
     for row in tables[0]:
+        row[3] = entrant_mapping.get(row[3], row[3])
         text += ",".join(row) + "\n"
 
     file.write_text(text)
@@ -280,7 +294,7 @@ def create_sprint_result():
         else:
             fastest_lap_index = 0
 
-        text += ",".join([row[1], row[5], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
+        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
 
     finishers = len(table)
 
@@ -310,6 +324,7 @@ def create_sprint_result():
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
+        name = entrant_mapping[constructor]
         constructor_text += f"{constructor},{constructor_result[constructor]}\n"
 
 
@@ -451,7 +466,7 @@ def create_race_result():
         time = row[7].split(":")
         milliseconds = int(time[0]) * 3600000 + int(time[1]) * 60000 + int(time[2].split(".")[0]) * 1000 + int(time[2].split(".")[1])
 
-        text += ",".join([row[1], row[5], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
+        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
 
     finishers = len(table)
 
@@ -476,7 +491,8 @@ def create_race_result():
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
-        constructor_text += f"{constructor},{constructor_result[constructor]}\n"
+        name = entrant_mapping[constructor]
+        constructor_text += f"{name},{constructor_result[constructor]}\n"
 
 
     driver_file = Path(f"csv/driver_race_result.csv")
@@ -525,7 +541,8 @@ def create_constructors_championship():
         for row in table:
             wins = len([r for r in row[3:] if len(r.split("\n")) >= 2 and (r.split("\n")[len(r.split("\n")) - 2] == "1" or r.split("\n")[len(r.split("\n")) - 2] == "F 1")])
             constructor = " ".join(row[1].split("\n"))
-            text += ",".join([constructor, row[2], row[0], str(wins)]) + "\n"
+            name = entrant_mapping[constructor]
+            text += ",".join([name, row[2], row[0], str(wins)]) + "\n"
 
 
     file = Path(f"csv/constructors_championship.csv")
