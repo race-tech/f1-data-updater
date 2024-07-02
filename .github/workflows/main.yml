@@ -110,6 +110,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: f1db-updater
+          run: cargo run --release -- ${{ needs.setup.outputs.round }} ${{ needs.setup.outputs.is_sprint }}
 
       - name: Create sql dump
         run: |
