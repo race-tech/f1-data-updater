@@ -100,7 +100,7 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 }
 
 fn pit_stops(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
-    let file = "/etc/csv/pit_stops.csv";
+    let file = "/etc/csv/race_pit_stops.csv";
     let mut rdr = csv::Reader::from_path(file)?;
 
     for r in rdr.deserialize::<models::PitStop>() {
