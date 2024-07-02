@@ -168,7 +168,7 @@ fn qualifying_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> 
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     qo.entrant
                 ),
                 |constructor_id: i32| constructor_id,
@@ -230,7 +230,7 @@ fn driver_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     drr.entrant
                 ),
                 |constructor_id: i32| constructor_id,
@@ -298,7 +298,7 @@ fn constructor_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     crr.constructor
                 ),
                 |constructor_id: i32| constructor_id,
@@ -340,7 +340,7 @@ fn driver_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()>
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE surname = {}", surname),
+                format!("SELECT driverId FROM drivers WHERE surname = '{}'", surname),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -384,7 +384,7 @@ fn constructor_championship(race_id: i32, tx: &mut Transaction) -> anyhow::Resul
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     cc.constructor
                 ),
                 |constructor_id: i32| constructor_id,
@@ -486,7 +486,7 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     dsr.entrant
                 ),
                 |constructor_id: i32| constructor_id,
@@ -566,7 +566,7 @@ fn constructor_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Res
         let constructor_id = *tx
             .query_map(
                 format!(
-                    "SELECT constructorId FROM constructors WHERE name = {}",
+                    "SELECT constructorId FROM constructors WHERE name = '{}'",
                     crr.constructor
                 ),
                 |constructor_id: i32| constructor_id,
