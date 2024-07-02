@@ -2,7 +2,7 @@ use std::env;
 
 use chrono::Datelike;
 use mysql::{prelude::*, Transaction};
-use sea_query::{Expr, MysqlQueryBuilder, Query};
+use sea_query::{MysqlQueryBuilder, Query};
 
 mod models;
 mod tables;
@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         constructor_results(race_id, &mut tx)?;
     } else {
         constructor_sprint_results(race_id, &mut tx)?;
-        sprint_lap_times(race_id, &mut tx)?;
+        // sprint_lap_times(race_id, &mut tx)?;
         driver_sprint_results(race_id, &mut tx)?;
     }
 
