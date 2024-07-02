@@ -20,12 +20,12 @@ pub struct QualificationOrder {
     #[serde(rename = "%")]
     pub pourcentage: f32,
     pub q1_time: String,
-    pub q2: String,
-    pub q2_laps: u32,
-    pub q2_time: String,
-    pub q3: String,
-    pub q3_laps: u32,
-    pub q3_time: String,
+    pub q2: Option<String>,
+    pub q2_laps: Option<u32>,
+    pub q2_time: Option<String>,
+    pub q3: Option<String>,
+    pub q3_laps: Option<u32>,
+    pub q3_time: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
