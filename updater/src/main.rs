@@ -63,7 +63,10 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", la.driver),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(la.driver)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -106,7 +109,10 @@ fn pit_stops(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", ps.no),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(ps.no)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -151,7 +157,10 @@ fn qualifying_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> 
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", qo.no),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(qo.no)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -210,7 +219,10 @@ fn driver_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", drr.no),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(drr.no)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -417,7 +429,10 @@ fn sprint_lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", la.driver),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(la.driver)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -460,7 +475,10 @@ fn driver_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Result<(
 
         let driver_id = *tx
             .query_map(
-                format!("SELECT driverId FROM drivers WHERE number = {}", dsr.no),
+                format!(
+                    "SELECT driverId FROM drivers WHERE number = {}",
+                    driver_number(dsr.no)
+                ),
                 |driver_id: i32| driver_id,
             )?
             .first()
@@ -571,4 +589,12 @@ fn constructor_sprint_results(race_id: i32, tx: &mut Transaction) -> anyhow::Res
 
     log::info!("constructor sprint result inserted");
     Ok(())
+}
+
+fn driver_number(no: u16) -> u16 {
+    if no == 1 {
+        33
+    } else {
+        no
+    }
 }
