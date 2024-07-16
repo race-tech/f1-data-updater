@@ -39,12 +39,12 @@ pub struct DriverRaceResult {
     pub time: Option<String>,
     pub milliseconds: Option<String>,
     #[serde(rename = "fastestLap")]
-    pub fastest_lap: u16,
-    pub rank: u16,
+    pub fastest_lap: Option<u16>,
+    pub rank: Option<u16>,
     #[serde(rename = "fastestLapTime")]
-    pub fatest_lap_time: String,
+    pub fatest_lap_time: Option<String>,
     #[serde(rename = "fastestLapSpeed")]
-    pub fastest_lap_speed: f32,
+    pub fastest_lap_speed: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -60,11 +60,11 @@ pub struct DriverSprintResult {
     pub time: Option<String>,
     pub milliseconds: Option<String>,
     #[serde(rename = "fastestLap")]
-    pub fastest_lap: u16,
+    pub fastest_lap: Option<u16>,
     #[serde(rename = "fastestLapTime")]
-    pub fatest_lap_time: String,
+    pub fatest_lap_time: Option<String>,
     #[serde(rename = "fastestLapSpeed")]
-    pub fastest_lap_speed: f32,
+    pub fastest_lap_speed: Option<f32>,
 }
 
 #[derive(Deserialize, Debug)]
