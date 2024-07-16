@@ -41,10 +41,10 @@ titles = {
         ]
     },
     "QUALIFYING": {
-        "quali_classification": ["Provisional Classification"]
+        "quali_classification": ["Provisional Classification", "Classification"]
     },
     "SPRINT RACE": {
-        "sprint_classification": ["Provisional Classification", "Sprint Provisional Classification"],
+        "sprint_classification": ["Provisional Classification", "Sprint Provisional Classification", "Classification"],
         "sprint_lap_chart": ["Sprint Lap Chart", "Lap Chart"],
         "sprint_history_chart": [
             "History Chart"
