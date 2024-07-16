@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
 pub struct LapAnalysis {
@@ -36,8 +36,8 @@ pub struct DriverRaceResult {
     pub position_order: u16,
     pub points: u16,
     pub laps: u16,
-    pub time: String,
-    pub milliseconds: String,
+    pub time: Option<String>,
+    pub milliseconds: Option<String>,
     #[serde(rename = "fastestLap")]
     pub fastest_lap: u16,
     pub rank: u16,
@@ -57,8 +57,8 @@ pub struct DriverSprintResult {
     pub position_order: u16,
     pub points: u16,
     pub laps: u16,
-    pub time: String,
-    pub milliseconds: String,
+    pub time: Option<String>,
+    pub milliseconds: Option<String>,
     #[serde(rename = "fastestLap")]
     pub fastest_lap: u16,
     #[serde(rename = "fastestLapTime")]
