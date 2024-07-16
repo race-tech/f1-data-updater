@@ -103,9 +103,11 @@ def download_files(year: int, race_name: str, is_sprint: bool):
 
         if div.name == "p" and b_tag is not None:
             for header in files_url:
-                if header == b_tag.text:
+                if header == b_tag.getText(strip=True):
                     current_header = header
                     break
+                else:
+                    current_header = ""
 
         classes = div.get("class")
 
@@ -386,11 +388,16 @@ def create_race_result():
         else:
             constructor_result[row[5]] += points
 
+        if row[11] in fastest_lap:
+            fastest_lap_index = fastest_lap.index(row[11]) + 1
+        else:
+            fastest_lap_index = 0
+
         # Convert the time to milliseconds (time format: hh:MM:SS.mmm)
         time = row[7].split(":")
         milliseconds = int(time[0]) * 3600000 + int(time[1]) * 60000 + int(time[2].split(".")[0]) * 1000 + int(time[2].split(".")[1])
 
-        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap.index(row[11]) + 1), row[11], row[10]]) + "\n"
+        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
 
     finishers = len(table)
 
@@ -411,7 +418,12 @@ def create_race_result():
                 else:
                     constructor_result[row[4]] += points
 
-                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap.index(row[10]) + 1), row[10], row[9]]) + "\n"
+                if row[11] in fastest_lap:
+                    fastest_lap_index = fastest_lap.index(row[11]) + 1
+                else:
+                    fastest_lap_index = 0
+
+                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
