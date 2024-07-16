@@ -332,13 +332,19 @@ def create_race_lap_analysis():
         for i in range(len(tables)):
             table = tables[i]
             nb_laps += 1
-            for j in range(len(table)):
+            drivers = {}
+            for j in range(len(table) - 1, -1, -1):
                 row = table[j]
                 m = row[2].split(":")[0]
                 s = row[2].split(":")[1].split(".")[0]
                 ms = row[2].split(":")[1].split(".")[1]
                 mmm = int(m) * 60000 + int(s) * 1000 + int(ms)
-                laps.append([nb_laps, row[0], row[2], j + 1, mmm])
+
+                if str(row[0]) in drivers:
+                    laps.append([nb_laps - 1, row[0], row[2], j + 1, mmm])
+                else:
+                    drivers[str(row[0])] = True
+                    laps.append([nb_laps, row[0], row[2], j + 1, mmm])
 
     file = Path(f"csv/laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
