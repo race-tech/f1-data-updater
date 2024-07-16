@@ -298,7 +298,7 @@ def create_sprint_result():
                 else:
                     fastest_lap_index = 0
 
-                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
+                text += ",".join([row[0], entrant_mapping[row[4]], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
@@ -431,7 +431,7 @@ def create_race_result():
                 else:
                     fastest_lap_index = 0
 
-                text += ",".join([row[0], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
+                text += ",".join([row[0], entrant_mapping[row[4]], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
 
     constructor_text = ",".join(["constructor", "points"]) + "\n"
     for constructor in constructor_result:
