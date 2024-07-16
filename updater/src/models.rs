@@ -31,7 +31,7 @@ pub struct DriverRaceResult {
     pub no: u16,
     pub entrant: String,
     pub grid: u16,
-    pub position: u16,
+    pub position: String,
     #[serde(rename = "positionOrder")]
     pub position_order: u16,
     pub points: u16,
@@ -52,7 +52,7 @@ pub struct DriverSprintResult {
     pub no: u16,
     pub entrant: String,
     pub grid: u16,
-    pub position: u16,
+    pub position: String,
     #[serde(rename = "positionOrder")]
     pub position_order: u16,
     pub points: u16,
