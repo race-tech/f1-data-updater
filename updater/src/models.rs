@@ -17,8 +17,6 @@ pub struct QualificationOrder {
     pub entrant: String,
     pub q1: String,
     pub q1_laps: u32,
-    #[serde(rename = "%")]
-    pub pourcentage: f32,
     pub q1_time: String,
     pub q2: Option<String>,
     pub q2_laps: Option<u32>,
