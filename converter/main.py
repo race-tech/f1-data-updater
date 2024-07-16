@@ -177,7 +177,7 @@ def create_quali_classification():
     # Remove 4th and 5th element of each row
     tables[0] = [row[:3] + row[5:] for row in tables[0]]
 
-    text = ",".join(["pos", "no", "driver", "entrant", "q1", "q1_laps", "%", "q1_time", "q2", "q2_laps", "q2_time", "q3", "q3_laps", "q3_time"]) + "\n"
+    text = ",".join(["pos", "no", "driver", "entrant", "q1", "q1_laps", "q1_time", "q2", "q2_laps", "q2_time", "q3", "q3_laps", "q3_time"]) + "\n"
     for row in tables[0]:
         row[3] = entrant_mapping.get(row[3], row[3])
         text += ",".join(row) + "\n"
