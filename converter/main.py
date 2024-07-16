@@ -325,18 +325,20 @@ def create_race_lap_analysis():
     pdf_lap_analysis = pdfplumber.open(fn_lap_analysis)
 
     laps = []
+    nb_laps = 0
 
     for page in pdf_lap_analysis.pages:
         tables = page.extract_tables()
         for i in range(len(tables)):
             table = tables[i]
+            nb_laps += 1
             for j in range(len(table)):
                 row = table[j]
                 m = row[2].split(":")[0]
                 s = row[2].split(":")[1].split(".")[0]
                 ms = row[2].split(":")[1].split(".")[1]
                 mmm = int(m) * 60000 + int(s) * 1000 + int(ms)
-                laps.append([i + 1, row[0], row[2], j + 1, mmm])
+                laps.append([nb_laps, row[0], row[2], j + 1, mmm])
 
     file = Path(f"csv/laps_analysis.csv")
     file.parent.mkdir(parents=True, exist_ok=True)
