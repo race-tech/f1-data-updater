@@ -17,6 +17,7 @@ titles = {
     "RACE": {
         "race_classification": [
             "Race Provisional Classification",
+            "Provisional Classification",
             "Classification",
             "Provisional Race Classification"
         ],
