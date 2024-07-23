@@ -1,12 +1,15 @@
+use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 
 #[derive(Deserialize, Debug)]
 pub struct LapAnalysis {
-    pub lap: u16,
-    pub driver: u16,
-    pub time: String,
     pub position: u16,
-    pub milliseconds: String,
+    pub driver_no: u16,
+    pub gap: String,
+    #[serde(deserialize_with = "de_time")]
+    pub duration: chrono::TimeDelta,
+    pub time: String,
+    pub lap: u16,
 }
 
 #[derive(Deserialize, Debug)]
@@ -98,4 +101,16 @@ pub struct PitStop {
     pub time: String,
     pub duration: String,
     pub milliseconds: String,
+}
+
+fn de_time<'de, D>(de: D) -> Result<chrono::TimeDelta, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let input = String::deserialize(de)?;
+    if let Ok(time) = chrono::NaiveTime::parse_from_str(&input, "%M:%S:%.3f") {
+        Ok(time.signed_duration_since(chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap()))
+    } else {
+        Err(D::Error::custom("invalid time"))
+    }
 }

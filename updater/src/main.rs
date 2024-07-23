@@ -65,7 +65,7 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
             .query_map(
                 format!(
                     "SELECT driverId FROM drivers WHERE number = {}",
-                    driver_number(la.driver)
+                    driver_number(la.driver_no)
                 ),
                 |driver_id: i32| driver_id,
             )?
@@ -88,7 +88,7 @@ fn lap_times(race_id: i32, tx: &mut Transaction) -> anyhow::Result<()> {
                 la.lap.into(),
                 la.position.into(),
                 la.time.into(),
-                la.milliseconds.into(),
+                la.duration.num_milliseconds().into(),
             ])?
             .to_string(MysqlQueryBuilder);
 
