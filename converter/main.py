@@ -10,7 +10,13 @@ import pdfplumber
 import json
 import sys
 
+from parser.parse_quali import parse_quali_final_classification
+from parser.parse_driver_championship import parse_driver_championship
+from parser.parse_constructor_championship import parse_constructor_championship
+from parser.parse_race_classification import parse_race_final_classification_page
 from parser.parse_race_history_chart import parse_race_history_chart
+from parser.parse_race_lap_chart import parse_race_lap_chart
+from parser.parse_race_pit_stops import parse_race_pit_stop
 
 base = "https://www.fia.com"
 endpoint = "https://www.fia.com/events/fia-formula-one-world-championship"
@@ -103,21 +109,30 @@ def download_files(year: int, race_name: str, is_sprint: bool):
             continue
 
         b_tag = div.find("b")
+        strong_tag = div.find("strong")
 
-        if div.name == "p" and b_tag is not None:
-            for header in files_url:
-                if header == b_tag.getText(strip=True):
-                    current_header = header
-                    break
-                else:
-                    current_header = ""
+        if div.name == "p":
+            if b_tag is not None:
+                current_header = ""
+
+                for header in files_url:
+                    if header == b_tag.getText(strip=True):
+                        current_header = header
+                        break
+            elif strong_tag is not None:
+                current_header = ""
+
+                for header in files_url:
+                    if header == strong_tag.getText(strip=True):
+                        current_header = header
+                        break
 
         classes = div.get("class")
 
-        if classes is None or classes[0] != 'for-documents':
+        if current_header == "":
             continue
 
-        if current_header == "":
+        if classes is None or classes[0] != 'for-documents':
             continue
 
         a = div.find("a")
@@ -135,6 +150,7 @@ def download_files(year: int, race_name: str, is_sprint: bool):
         url = a.get("href")
         title = title_div.text
 
+        print(f"Found: {current_header} - {title}")
         files_url[current_header].append((title, url))
 
     print("----- Files found -----")
@@ -167,25 +183,8 @@ def download_files(year: int, race_name: str, is_sprint: bool):
             filepath.write_bytes(resp.content)
 
 def create_quali_classification():
-    fn = f"data/quali_classification.pdf"
-
-    pdf = pdfplumber.open(fn)
-    page = pdf.pages[0]
-
-    tables = page.extract_tables()
-
-    file = Path(f"csv/quali_classification.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    # Remove 4th and 5th element of each row
-    tables[0] = [row[:3] + row[5:] for row in tables[0]]
-
-    text = ",".join(["pos", "no", "driver", "entrant", "q1", "q1_laps", "q1_time", "q2", "q2_laps", "q2_time", "q3", "q3_laps", "q3_time"]) + "\n"
-    for row in tables[0]:
-        row[3] = entrant_mapping.get(row[3], row[3])
-        text += ",".join(row) + "\n"
-
-    file.write_text(text)
+    data = parse_quali_final_classification("data/quali_classification.pdf")
+    data.to_csv("csv/quali_classification.csv", index=False)
 
     print("----- CSV file created for quali classification -----")
     return
@@ -320,181 +319,41 @@ def create_sprint_result():
     print("----- CSV file created for sprint result -----")
     return
 
-def create_race_lap_analysis():
+def create_race_history_chart():
     data = parse_race_history_chart("data/race_history_chart.pdf")
-    data.to_csv("csv/laps_analysis.csv", index=False)
-    print("----- CSV file created for laps analysis -----")
+    data.to_csv("csv/race_history_chart.csv", index=False)
+    print("----- CSV file created for race history chart -----")
     return
 
-def create_race_result():
-    fn_race_results = f"data/race_classification.pdf"
-    fn_lap_chart = f"data/race_lap_chart.pdf"
+def create_race_classification():
+    data = parse_race_final_classification_page("data/race_classification.pdf")
+    data.to_csv("csv/race_classification.csv", index=False)
+    print("----- CSV file created for race classification -----")
+    return
 
-    pdf_lap_chart = pdfplumber.open(fn_lap_chart)
-    grid_start = [t for t in pdf_lap_chart.pages[0].extract_text().split("\n") if t.startswith("GRID")][0].split(" ")[1:]
+def create_race_lap_chart():
+    data = parse_race_lap_chart("data/race_lap_chart.pdf")
+    data.to_csv("csv/race_lap_chart.csv", index=False)
+    print("----- CSV file created for race lap chart -----")
+    return
 
-    pdf_race_classification = pdfplumber.open(fn_race_results)
-    tables = pdf_race_classification.pages[0].extract_tables()
-    table = tables[0]
-
-    text = ",".join(["no", "entrant", "grid", "position", "positionOrder", "points", "laps", "time", "milliseconds", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
-    fastest_lap = [r[11] for r in table]
-    constructor_result = {}
-
-    # Handle DNF
-    for t in tables:
-        if t[0][0] == "NOT CLASSIFIED":
-            for row in t[1:]:
-                if row[10] != "":
-                    fastest_lap.append(row[10])
-    # Sort the fastest lap times. The time is in the format MM:SS.mmm
-    fastest_lap = sorted(fastest_lap, key=lambda x: (int(x.split(":")[0]), int(x.split(":")[1].split(".")[0]), int(x.split(":")[1].split(".")[1])))
-    for i in range(len(table)):
-        row = table[i]
-        if row[-1] != '':
-            points = int(row[-1])
-        else:
-            points = 0
-
-        if i == 0:
-            lap_time = row[7]
-        else:
-            lap_time = row[8]
-
-        if row[5] not in constructor_result:
-            constructor_result[row[5]] = points
-        else:
-            constructor_result[row[5]] += points
-
-        if row[11] in fastest_lap:
-            fastest_lap_index = fastest_lap.index(row[11]) + 1
-        else:
-            fastest_lap_index = 0
-
-        # Convert the time to milliseconds (time format: hh:MM:SS.mmm)
-        time = row[7].split(":")
-        milliseconds = int(time[0]) * 3600000 + int(time[1]) * 60000 + int(time[2].split(".")[0]) * 1000 + int(time[2].split(".")[1])
-
-        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
-
-    finishers = len(table)
-
-    # Handle DNF
-    for t in tables:
-        if t[0][0] == "NOT CLASSIFIED":
-            table = t[1:]
-            for i in range(len(table)):
-                row = table[i]
-
-                if row[-1] != '':
-                    points = int(row[-1])
-                else:
-                    points = 0
-
-                if row[4] not in constructor_result:
-                    constructor_result[row[4]] = points
-                else:
-                    constructor_result[row[4]] += points
-
-                if row[11] in fastest_lap:
-                    fastest_lap_index = fastest_lap.index(row[11]) + 1
-                else:
-                    fastest_lap_index = 0
-
-                text += ",".join([row[0], entrant_mapping[row[4]], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
-
-    constructor_text = ",".join(["constructor", "points"]) + "\n"
-    for constructor in constructor_result:
-        name = entrant_mapping[constructor]
-        constructor_text += f"{name},{constructor_result[constructor]}\n"
-
-
-    driver_file = Path(f"csv/driver_race_result.csv")
-    driver_file.parent.mkdir(parents=True, exist_ok=True)
-
-    constructor_file = Path(f"csv/constructor_race_result.csv")
-    constructor_file.parent.mkdir(parents=True, exist_ok=True)
-
-    driver_file.write_text(text)
-    constructor_file.write_text(constructor_text)
-    print("----- CSV file created for race result -----")
+def create_race_pit_stops():
+    data = parse_race_pit_stop("data/race_pit_stops.pdf")
+    data.to_csv("csv/race_pit_stops.csv", index=False)
+    print("----- CSV file created for race pit stops -----")
     return
 
 def create_drivers_championship():
-    fn = f"data/drivers_championship.pdf"
-
-    pdf = pdfplumber.open(fn)
-
-    text = ",".join(["driver", "points", "position", "wins"]) + "\n"
-
-    for page in range(len(pdf.pages)):
-        table = pdf.pages[page].extract_tables()[0]
-
-        for row in table:
-            wins = len([r for r in row[3:] if len(r.split("\n")) == 2 and (r.split("\n")[1] == "1" or r.split("\n")[1] == "1F")])
-            text += ",".join([row[1], row[2], row[0], str(wins)]) + "\n"
-
-
-    file = Path(f"csv/drivers_championship.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    file.write_text(text)
+    data = parse_driver_championship("data/drivers_championship.pdf")
+    data.to_csv("csv/drivers_championship.csv", index=False)
     print("----- CSV file created for drivers championship -----")
     return
 
 def create_constructors_championship():
-    fn = f"data/constructors_championship.pdf"
-
-    pdf = pdfplumber.open(fn)
-
-    text = ",".join(["constructor", "points", "position", "wins"]) + "\n"
-
-    for page in range(len(pdf.pages)):
-        table = pdf.pages[page].extract_tables()[0]
-
-        for row in table:
-            wins = len([r for r in row[3:] if len(r.split("\n")) >= 2 and (r.split("\n")[len(r.split("\n")) - 2] == "1" or r.split("\n")[len(r.split("\n")) - 2] == "F 1")])
-            constructor = " ".join(row[1].split("\n"))
-            name = entrant_mapping[constructor]
-            text += ",".join([name, row[2], row[0], str(wins)]) + "\n"
-
-
-    file = Path(f"csv/constructors_championship.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    file.write_text(text)
+    data = parse_constructor_championship("data/constructors_championship.pdf")
+    data.to_csv("csv/constructors_championship.csv", index=False)
     print("----- CSV file created for constructors championship -----")
     return
-
-def create_pit_stops():
-    fn = f"data/race_pit_stops.pdf"
-
-    pdf = pdfplumber.open(fn)
-
-    text = ",".join(["no", "driver", "stop", "lap", "time", "duration", "milliseconds"]) + "\n"
-
-    for page in range(len(pdf.pages)):
-        table = pdf.pages[page].extract_tables()[0]
-
-        for row in table:
-            if len(row[6].split(":")) == 2:
-                m = int(row[6].split(":")[0])
-                s = int(row[6].split(":")[1].split(".")[0])
-                mmm = int(row[6].split(":")[1].split(".")[1])
-            else:
-                m = 0
-                s = int(row[6].split(":")[0].split(".")[0])
-                mmm = int(row[6].split(":")[0].split(".")[1])
-            milliseconds = m * 60000 + s * 1000 + mmm
-            text += ",".join([row[0], row[1], row[5], row[3], row[4], row[6], str(milliseconds)]) + "\n"
-
-    file = Path(f"csv/race_pit_stops.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    file.write_text(text)
-    print("----- CSV file created for pit stops -----")
-    return
-
 
 def snake_case(s: str) -> str:
     return '_'.join(
@@ -528,12 +387,18 @@ if __name__ == "__main__":
         key = snake_race_name
         download_files(today.year, kebab_race_name, is_sprint)
 
+        # Qualifying
         create_quali_classification()
-        create_race_lap_analysis()
-        create_race_result()
+
+        # Race
+        create_race_history_chart()
+        create_race_classification()
+        create_race_lap_chart()
+        create_race_pit_stops()
+
+        # Championship
         create_drivers_championship()
         create_constructors_championship()
-        create_pit_stops()
 
         if is_sprint:
             print("----- Handling sprint weekend -----")

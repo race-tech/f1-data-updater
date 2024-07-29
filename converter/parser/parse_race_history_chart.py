@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-
-# This file is from the [fia-doc](https://github.com/harningle/fia-doc/tree/main) project, which is not licensed.
 import datetime
 import os
 import pickle
@@ -9,8 +7,6 @@ import warnings
 
 import fitz
 import pandas as pd
-
-from models.lap import Lap, LapData, SessionEntry
 
 W: float  # Page width and height
 H: float
@@ -162,40 +158,6 @@ def to_timedelta(s: str) -> datetime.timedelta:
     if t == datetime.timedelta(0):
         raise ValueError(f'''got an invalid time: {s}''')
     return t
-
-
-def to_json(df: pd.DataFrame) -> list[dict]:
-    """Convert the parsed lap time df. to a json obj. See jolpica/jolpica-f1#7"""
-
-    # Hard code 2023 Abu Dhabi for now
-    year = 2023
-    round_no = 22
-    session_type = 'R'
-
-    # Convert string time time to timedelta, e.g. "1:32.190" -->
-    df['time'] = df['time'].apply(to_timedelta)
-
-    # Convert to json
-    df['lap'] = df.apply(lambda x: Lap(lap_number=x['lap'], position=x['position'], time=x['time']),
-                         axis=1)
-    df = df.groupby('driver_no')[['lap']].agg(list).reset_index()
-    df['session_entry'] = df['driver_no'].map(
-        lambda x: SessionEntry(
-            year=year,
-            round=round_no,
-            type=session_type,
-            car_number=x
-        )
-    )
-    del df['driver_no']
-    lap_data = df.apply(
-        lambda x: LapData(foreign_keys=x['session_entry'], objects=x['lap']).model_dump(),
-        axis=1
-    ).tolist()
-    with open('laps.pkl', 'wb') as f:
-        pickle.dump(lap_data, f)
-    return lap_data
-
 
 if __name__ == '__main__':
     pass
