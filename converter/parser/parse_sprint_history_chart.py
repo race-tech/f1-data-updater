@@ -73,7 +73,7 @@ def parse_sprint_history_chart(file: str | os.PathLike[str]) -> pd.DataFrame:
     H = page.bound()[3]
 
     # Parse all pages
-    df = pd.concat([parse_race_history_chart_page(page) for page in doc], ignore_index=True)
+    df = pd.concat([parse_sprint_history_chart_page(page) for page in doc], ignore_index=True)
 
     # Clean up
     """

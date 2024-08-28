@@ -68,7 +68,7 @@ def parse_sprint_lap_chart(file: str | os.PathLike[str]) -> pd.DataFrame:
     # Parse all pages
     tables = []
     for page in doc:
-        tables.append(parse_race_lap_chart_page(page))
+        tables.append(parse_sprint_lap_chart_page(page))
     df = pd.concat(tables, ignore_index=True)
 
     # Reshape the table to long format, i.e. to lap-position level
