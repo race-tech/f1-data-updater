@@ -8,8 +8,8 @@ import pandas as pd
 W: float  # Page width
 
 
-def parse_race_lap_chart_page(page: fitz.Page) -> pd.DataFrame:
-    """Get the table from a given page in "Race Lap Chart" PDF
+def parse_sprint_lap_chart_page(page: fitz.Page) -> pd.DataFrame:
+    """Get the table from a given page in "Sprint Lap Chart" PDF
 
     :param page: A `fitz.Page` object
     :return: A dataframe of [lap No., position, driver No.]
@@ -21,7 +21,7 @@ def parse_race_lap_chart_page(page: fitz.Page) -> pd.DataFrame:
     # TODO: Probably need to use some other text as reference point. If the race name has "POS" in
     #       it, then the current method will fail
     t = page.search_for('POS')[0].y0
-    b = page.search_for('LAP')[-2].y1
+    b = page.search_for('Formula One World Championship')[0].y0
 
     df = page.find_tables(clip=fitz.Rect(0, t, W, b), strategy='text')[0].to_pandas()
 
@@ -52,9 +52,9 @@ def parse_race_lap_chart_page(page: fitz.Page) -> pd.DataFrame:
     return df
 
 
-def parse_race_lap_chart(file: str | os.PathLike[str]) -> pd.DataFrame:
+def parse_sprint_lap_chart(file: str | os.PathLike[str]) -> pd.DataFrame:
     """
-    Parse "Race Lap Chart" PDF
+    Parse "Sprint Lap Chart" PDF
 
     :param file: Path to PDF file
     :return: The output dataframe will be [lap No., position, driver No.]

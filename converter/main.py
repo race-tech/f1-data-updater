@@ -13,10 +13,14 @@ import sys
 from parser.parse_quali import parse_quali_final_classification
 from parser.parse_driver_championship import parse_driver_championship
 from parser.parse_constructor_championship import parse_constructor_championship
-from parser.parse_race_classification import parse_race_final_classification_page
+from parser.parse_race_classification import parse_race_final_classification
 from parser.parse_race_history_chart import parse_race_history_chart
 from parser.parse_race_lap_chart import parse_race_lap_chart
 from parser.parse_race_pit_stops import parse_race_pit_stop
+
+from parser.parse_sprint_history_chart import parse_sprint_history_chart
+from parser.parse_sprint_classification import parse_sprint_final_classification
+from parser.parse_sprint_lap_chart import parse_sprint_lap_chart
 
 base = "https://www.fia.com"
 endpoint = "https://www.fia.com/events/fia-formula-one-world-championship"
@@ -56,7 +60,8 @@ titles = {
         "sprint_classification": ["Provisional Classification", "Sprint Provisional Classification", "Classification"],
         "sprint_lap_chart": ["Sprint Lap Chart", "Lap Chart"],
         "sprint_history_chart": [
-            "History Chart"
+            "History Chart",
+            "Sprint History Chart"
         ]
     }
 }
@@ -189,134 +194,24 @@ def create_quali_classification():
     print("----- CSV file created for quali classification -----")
     return
 
-def create_sprint_lap_analysis():
-    fn_lap_analysis = f"data/sprint_history_chart.pdf"
+def create_sprint_history_chart():
+    data = parse_sprint_history_chart("data/sprint_history_chart.pdf")
+    data.to_csv("csv/sprint_history_chart.csv", index=False)
 
-    lap_analysis_options = {}
-
-    pdf_lap_analysis = pdfplumber.open(fn_lap_analysis)
-
-    laps = []
-    lap = 1
-
-    for page in pdf_lap_analysis.pages:
-        tables = page.extract_tables()
-        for table in tables:
-            for j in range(len(table)):
-                row = table[j]
-                m = row[2].split(":")[0]
-                s = row[2].split(":")[1].split(".")[0]
-                ms = row[2].split(":")[1].split(".")[1]
-                mmm = int(m) * 60000 + int(s) * 1000 + int(ms)
-                laps.append([lap, row[0], row[2], j + 1, mmm])
-            lap += 1
-
-    file = Path(f"csv/sprint_laps_analysis.csv")
-    file.parent.mkdir(parents=True, exist_ok=True)
-
-    text = ",".join(["lap", "driver", "time", "position", "milliseconds"]) + "\n"
-    for lap in laps:
-        text += ",".join([str(lap[0]), lap[1], lap[2], str(lap[3]), str(lap[4])]) + "\n"
-
-    file.write_text(text)
     print("----- CSV file created for sprint laps analysis -----")
     return
 
-def create_sprint_result():
-    fn_race_results = f"data/sprint_classification.pdf"
-    fn_lap_chart = f"data/sprint_lap_chart.pdf"
+def create_sprint_classification():
+    data = parse_sprint_final_classification("data/sprint_classification.pdf")
+    data.to_csv("csv/sprint_classification.csv", index=False)
 
-    pdf_lap_chart = pdfplumber.open(fn_lap_chart)
-    grid_start = [t for t in pdf_lap_chart.pages[0].extract_text().split("\n") if t.startswith("GRID")][0].split(" ")[1:]
+    print("----- CSV file created for sprint classification -----")
+    return
 
-    pdf_race_classification = pdfplumber.open(fn_race_results)
-    tables = pdf_race_classification.pages[0].extract_tables()
-    table = tables[0]
-
-    text = ",".join(["no", "entrant", "grid", "position", "positionOrder", "points", "laps", "time", "milliseconds", "fastestLap", "rank", "fastestLapTime", "fastestLapSpeed"]) + "\n"
-    fastest_lap = [r[11] for r in table]
-    constructor_result = {}
-
-    # Handle DNF
-    for t in tables:
-        if t[0][0] == "NOT CLASSIFIED":
-            for row in t[1:]:
-                if row[10] != "":
-                    fastest_lap.append(row[10])
-    # Sort the fastest lap times. The time is in the format MM:SS.mmm
-    fastest_lap = sorted(fastest_lap, key=lambda x: (int(x.split(":")[0]), int(x.split(":")[1].split(".")[0]), int(x.split(":")[1].split(".")[1])))
-    for i in range(len(table)):
-        row = table[i]
-        if row[-1] != '':
-            points = int(row[-1])
-        else:
-            points = 0
-
-        if i == 0:
-            lap_time = row[7]
-        else:
-            lap_time = row[8]
-
-        if row[5] not in constructor_result:
-            constructor_result[row[5]] = points
-        else:
-            constructor_result[row[5]] += points
-
-        # Convert the time to milliseconds (time format: MM:SS.mmm)
-        time = row[7].split(":")
-        min = int(time[0])
-        sec = int(time[1].split(".")[0])
-        mmm = int(time[1].split(".")[1])
-        milliseconds = min * 60000 + sec * 1000 + mmm
-
-        if row[11] in fastest_lap:
-            fastest_lap_index = fastest_lap.index(row[11]) + 1
-        else:
-            fastest_lap_index = 0
-
-        text += ",".join([row[1], entrant_mapping[row[5]], str(grid_start.index(row[1]) + 1), row[0], row[0], str(points), row[6], lap_time, str(milliseconds), row[12], str(fastest_lap_index), row[11], row[10]]) + "\n"
-
-    finishers = len(table)
-
-    # Handle DNF
-    for t in tables:
-        if t[0][0] == "NOT CLASSIFIED":
-            table = t[1:]
-            for i in range(len(table)):
-                row = table[i]
-
-                if row[-1] != '':
-                    points = int(row[-1])
-                else:
-                    points = 0
-
-                if row[4] not in constructor_result:
-                    constructor_result[row[4]] = points
-                else:
-                    constructor_result[row[4]] += points
-
-                if row[11] in fastest_lap:
-                    fastest_lap_index = fastest_lap.index(row[11]) + 1
-                else:
-                    fastest_lap_index = 0
-
-                text += ",".join([row[0], entrant_mapping[row[4]], str(grid_start.index(row[0]) + 1), 'R', str(finishers + i + 1), str(points), row[5], '', '', row[11], str(fastest_lap_index), row[10], row[9]]) + "\n"
-
-    constructor_text = ",".join(["constructor", "points"]) + "\n"
-    for constructor in constructor_result:
-        name = entrant_mapping[constructor]
-        constructor_text += f"{constructor},{constructor_result[constructor]}\n"
-
-
-    driver_file = Path(f"csv/driver_sprint_result.csv")
-    driver_file.parent.mkdir(parents=True, exist_ok=True)
-
-    constructor_file = Path(f"csv/constructor_sprint_result.csv")
-    constructor_file.parent.mkdir(parents=True, exist_ok=True)
-
-    driver_file.write_text(text)
-    constructor_file.write_text(constructor_text)
-    print("----- CSV file created for sprint result -----")
+def create_sprint_lap_chart():
+    data = parse_sprint_lap_chart("data/sprint_lap_chart.pdf")
+    data.to_csv("csv/sprint_lap_chart.csv", index=False)
+    print("----- CSV file created for sprint lap chart -----")
     return
 
 def create_race_history_chart():
@@ -326,7 +221,7 @@ def create_race_history_chart():
     return
 
 def create_race_classification():
-    data = parse_race_final_classification_page("data/race_classification.pdf")
+    data = parse_race_final_classification("data/race_classification.pdf")
     data.to_csv("csv/race_classification.csv", index=False)
     print("----- CSV file created for race classification -----")
     return
@@ -385,7 +280,7 @@ if __name__ == "__main__":
 
     try :
         key = snake_race_name
-        download_files(today.year, kebab_race_name, is_sprint)
+        # download_files(today.year, kebab_race_name, is_sprint)
 
         # Qualifying
         create_quali_classification()
@@ -402,8 +297,9 @@ if __name__ == "__main__":
 
         if is_sprint:
             print("----- Handling sprint weekend -----")
-            create_sprint_lap_analysis()
-            create_sprint_result()
+            create_sprint_history_chart()
+            create_sprint_classification()
+            create_sprint_lap_chart()
     except Exception as e:
         print(e)
         exit(1)

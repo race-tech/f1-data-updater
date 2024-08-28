@@ -5,8 +5,8 @@ import fitz
 import pandas as pd
 
 
-def parse_race_final_classification(file: str | os.PathLike) -> pd.DataFrame:
-    """Parse "Race Final Classification" PDF
+def parse_sprint_final_classification(file: str | os.PathLike) -> pd.DataFrame:
+    """Parse "Sprint Final Classification" PDF
 
     :param file: Path to PDF file
     :return: The output dataframe will be [driver No., laps completed, total time,
@@ -17,11 +17,11 @@ def parse_race_final_classification(file: str | os.PathLike) -> pd.DataFrame:
     doc = fitz.open(file)
     for i in range(len(doc)):
         page = doc[i]
-        found = page.search_for('Race Final Classification')
+        found = page.search_for('Sprint Final Classification')
         if len(found) > 0:
             break
-        elif len(page.search_for('Race Provisional Classification')) > 0:
-            found = page.search_for('Race Provisional Classification')
+        elif len(page.search_for('Sprint Provisional Classification')) > 0:
+            found = page.search_for('Sprint Provisional Classification')
             break
 
     # Width and height of the page

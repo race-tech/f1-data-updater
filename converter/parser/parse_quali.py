@@ -60,7 +60,11 @@ def parse_quali_final_classification(file: str | os.PathLike) -> pd.DataFrame:
     df = page.find_tables(clip=bbox, snap_x_tolerance=snap_x_tolerance)[0].to_pandas()
     first_row = [format_col(c) for c in df.columns]
     # Insert the new column names
-    df.columns = ['_', 'no', 'driver', 'nat', 'entrant', 'q1', 'q1_laps', 'q1_time', 'q2',
+    if len(df.columns) == 14:
+        df.columns = ['_', 'no', 'driver', 'nat', 'entrant', 'q1', 'q1_laps', 'q1_time', 'q2',
+                          'q2_laps', 'q2_time', 'q3', 'q3_laps', 'q3_time']
+    elif len(df.columns) == 15:
+        df.columns = ['_', 'no', 'driver', 'nat', 'entrant', 'q1', 'q1_laps', 'q1_laps_%', 'q1_time', 'q2',
                           'q2_laps', 'q2_time', 'q3', 'q3_laps', 'q3_time']
     df = pd.concat([pd.DataFrame([first_row], columns=df.columns), df], ignore_index=True)
     df.drop(columns=['_', 'nat'], inplace=True)
