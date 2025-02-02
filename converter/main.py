@@ -6,7 +6,6 @@ from bs4.element import Tag
 
 import requests
 from pathlib import Path
-import pdfplumber
 import json
 import sys
 

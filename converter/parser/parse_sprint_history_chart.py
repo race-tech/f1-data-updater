@@ -5,7 +5,7 @@ import pickle
 import re
 import warnings
 
-import fitz
+import pymupdf as fitz
 import pandas as pd
 
 W: float  # Page width and height

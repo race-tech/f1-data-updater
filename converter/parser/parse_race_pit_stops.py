@@ -2,7 +2,7 @@
 import os
 import pickle
 
-import fitz
+import pymupdf as fitz
 import pandas as pd
 
 

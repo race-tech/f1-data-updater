@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
-import fitz
+import pymupdf as fitz
 import pandas as pd
 
 
